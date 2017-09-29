@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: L-SAP
+Bundle-Version: 3.0.0.qualifier
+Require-Bundle: org.eclipse.core.runtime;bundle-version="3.11.1",
+ com.ensoftcorp.atlas.c.core;bundle-version="2.7.3",
+ com.ensoftcorp.atlas.java.core;bundle-version="2.7.3",
+ com.ensoftcorp.atlas.java.ui;bundle-version="2.7.3",
+ com.ensoftcorp.atlas.core;bundle-version="2.7.3",
+ com.ensoftcorp.atlas.ui.shell;bundle-version="2.7.3",
+ com.ensoftcorp.atlas.ui;bundle-version="2.7.3"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
