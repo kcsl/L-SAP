@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-SymbolicName: L-SAP
-Bundle-Version: 3.0.0.qualifier
+Bundle-SymbolicName: com.kcsl.lsap
+Bundle-Version: 3.1.7.qualifier
 Require-Bundle: org.eclipse.core.runtime;bundle-version="3.13.0",
  com.ensoftcorp.atlas.c.core;bundle-version="3.1.7",
  com.ensoftcorp.atlas.java.core;bundle-version="3.1.7",
@@ -11,5 +11,5 @@ Require-Bundle: org.eclipse.core.runtime;bundle-version="3.13.0",
  com.ensoftcorp.atlas.ui;bundle-version="3.1.7",
  org.eclipse.ui;bundle-version="3.109.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Bundle-Activator: com.iastate.kcsl.Activator
+Bundle-Activator: com.kcsl.lsap.Activator
 Bundle-ActivationPolicy: lazy

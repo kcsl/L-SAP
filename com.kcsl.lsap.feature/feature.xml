@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="com.kcsl.lsap.feature"
+      label="L-SAP"
+      version="3.1.7.qualifier"
+      provider-name="KCSL">
+
+   <description url="http://www.example.com/description">
+      [Enter Feature Description here.]
+   </description>
+
+   <copyright url="http://www.example.com/copyright">
+      [Enter Copyright Description here.]
+   </copyright>
+
+   <license url="http://www.example.com/license">
+      [Enter License Description here.]
+   </license>
+
+   <requires>
+      <import plugin="org.eclipse.core.runtime" version="3.13.0" match="greaterOrEqual"/>
+      <import plugin="com.ensoftcorp.atlas.c.core" version="3.1.7" match="greaterOrEqual"/>
+      <import plugin="com.ensoftcorp.atlas.java.core" version="3.1.7" match="greaterOrEqual"/>
+      <import plugin="com.ensoftcorp.atlas.java.ui" version="3.1.7" match="greaterOrEqual"/>
+      <import plugin="com.ensoftcorp.atlas.core" version="3.1.7" match="greaterOrEqual"/>
+      <import plugin="com.ensoftcorp.atlas.ui.shell" version="3.1.7" match="greaterOrEqual"/>
+      <import plugin="com.ensoftcorp.atlas.ui" version="3.1.7" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.ui" version="3.109.0" match="greaterOrEqual"/>
+   </requires>
+
+   <plugin
+         id="com.kcsl.lsap"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>
