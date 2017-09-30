@@ -1,6 +1,5 @@
 package com.iastate.verifier.internal;
 
-
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,7 +15,6 @@ import com.alexmerz.graphviz.objects.Graph;
 import com.alexmerz.graphviz.objects.Id;
 import com.alexmerz.graphviz.objects.Node;
 import com.alexmerz.graphviz.objects.PortNode;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.EdgeDirection;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.NodeDirection;
 import com.ensoftcorp.atlas.core.db.graph.SimpleAddress;
@@ -24,8 +22,8 @@ import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.index.common.SourceCorrespondence;
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.java.core.script.Common;
 import com.iastate.atlas.scripts.LinuxScripts;
 import com.iastate.atlas.scripts.Queries;
 
@@ -52,7 +50,7 @@ public class Utils {
 		}
 	}
 	
-	public static String toString(GraphElement node){
+	public static String toString(com.ensoftcorp.atlas.core.db.graph.Node node){
 		if(node.attr().containsKey(XCSG.sourceCorrespondence)){
 			SourceCorrespondence sc = (SourceCorrespondence) node.attr().get(XCSG.sourceCorrespondence);
 			if(sc != null){
@@ -62,7 +60,7 @@ public class Utils {
 		return (String) node.attr().get(XCSG.name);
 	}
 	
-	public static String toString(GraphElement node, boolean reportSourceCorrespondence){
+	public static String toString(com.ensoftcorp.atlas.core.db.graph.Node node, boolean reportSourceCorrespondence){
 		if(node.attr().containsKey(XCSG.sourceCorrespondence)){
 			SourceCorrespondence sc = (SourceCorrespondence) node.attr().get(XCSG.sourceCorrespondence);
 			if(sc != null){
@@ -72,15 +70,15 @@ public class Utils {
 		return (String) node.attr().get(XCSG.name);
 	}	
 	
-	public static String toString(AtlasSet<GraphElement> path){
-		List<GraphElement> list = new ArrayList<GraphElement>();
-		for(GraphElement n : path){
+	public static String toString(AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> path){
+		List<com.ensoftcorp.atlas.core.db.graph.Node> list = new ArrayList<com.ensoftcorp.atlas.core.db.graph.Node>();
+		for(com.ensoftcorp.atlas.core.db.graph.Node n : path){
 			list.add(n);
 		}
 		return toString(list);
 	}
 	
-	public static String toString(List<GraphElement> path) {
+	public static String toString(List<com.ensoftcorp.atlas.core.db.graph.Node> path) {
 		StringBuilder result = new StringBuilder();
 		for(int i = 0; i < path.size(); i++){
 			result.append(Utils.toString(path.get(i)));
@@ -92,31 +90,31 @@ public class Utils {
 		return result.toString();
 	}
 	
-	public static HashSet<GraphElement> toHashSet(AtlasSet<GraphElement> set){
-		HashSet<GraphElement> result = new HashSet<GraphElement>();
-		for(GraphElement node : set){
+	public static HashSet<com.ensoftcorp.atlas.core.db.graph.Node> toHashSet(AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> set){
+		HashSet<com.ensoftcorp.atlas.core.db.graph.Node> result = new HashSet<com.ensoftcorp.atlas.core.db.graph.Node>();
+		for(com.ensoftcorp.atlas.core.db.graph.Node node : set){
 			result.add(node);
 		}
 		return result;
 	}
 	
-	public static void addEFGToIndex(GraphElement functionNode, com.ensoftcorp.atlas.core.db.graph.Graph cfg, Graph efg){
-		HashMap<String, GraphElement> nodeAddressMap = new HashMap<String, GraphElement>();
-		for(GraphElement node : cfg.nodes()){
+	public static void addEFGToIndex(com.ensoftcorp.atlas.core.db.graph.Node functionNode, com.ensoftcorp.atlas.core.db.graph.Graph cfg, Graph efg){
+		HashMap<String, com.ensoftcorp.atlas.core.db.graph.Node> nodeAddressMap = new HashMap<String, com.ensoftcorp.atlas.core.db.graph.Node>();
+		for(com.ensoftcorp.atlas.core.db.graph.Node node : cfg.nodes()){
 			nodeAddressMap.put(node.address().toAddressString(), node);
 		}
 		
-		GraphElement entryNode = com.ensoftcorp.atlas.core.db.graph.Graph.U.createNode();
+		com.ensoftcorp.atlas.core.db.graph.Node entryNode = com.ensoftcorp.atlas.core.db.graph.Graph.U.createNode();
 		entryNode.attr().put(XCSG.name, Queries.EVENT_FLOW_ENTRY_NODE);
 		entryNode.attr().put(Queries.EVENT_FLOW_FOR_FUNCTION, functionNode.attr().get(XCSG.name));
 		entryNode.tags().add(Queries.EVENT_FLOW_NODE);
 		entryNode.tags().add(XCSG.controlFlowRoot);
 		nodeAddressMap.put("cfg0", entryNode);
-		GraphElement e = com.ensoftcorp.atlas.core.db.graph.Graph.U.createEdge(functionNode, entryNode);
+		com.ensoftcorp.atlas.core.db.graph.Edge e = com.ensoftcorp.atlas.core.db.graph.Graph.U.createEdge(functionNode, entryNode);
 		e.tags().add(XCSG.Contains);
 		
 		
-		GraphElement exitNode = com.ensoftcorp.atlas.core.db.graph.Graph.U.createNode();
+		com.ensoftcorp.atlas.core.db.graph.Node exitNode = com.ensoftcorp.atlas.core.db.graph.Graph.U.createNode();
 		exitNode.attr().put(XCSG.name, Queries.EVENT_FLOW_EXIT_NODE);
 		exitNode.attr().put(Queries.EVENT_FLOW_FOR_FUNCTION, functionNode.attr().get(XCSG.name));
 		exitNode.tags().add(Queries.EVENT_FLOW_NODE);
@@ -127,27 +125,27 @@ public class Utils {
 		for(Edge edge : efg.getEdges()){
 			Node fromNode = edge.getSource().getNode();
 			String fromNodeAddress = fromNode.getLabel();
-			GraphElement newFromNode = nodeAddressMap.get(fromNodeAddress);
+			com.ensoftcorp.atlas.core.db.graph.Node newFromNode = nodeAddressMap.get(fromNodeAddress);
 			if(newFromNode != null){
 				newFromNode.tags().add(Queries.EVENT_FLOW_NODE);
 			}
 			
 			Node toNode = edge.getTarget().getNode();
 			String toNodeAddress = toNode.getLabel();
-			GraphElement newToNode = nodeAddressMap.get(toNodeAddress);
+			com.ensoftcorp.atlas.core.db.graph.Node newToNode = nodeAddressMap.get(toNodeAddress);
 			if(newToNode != null){
 				newToNode.tags().add(Queries.EVENT_FLOW_NODE);
 			}
 			
 			if(newFromNode != null && newToNode != null){
 				SimpleAddress address = new SimpleAddress();
-				GraphElement newEdge = com.ensoftcorp.atlas.core.db.graph.Graph.U.createEdge(address, newFromNode, newToNode);
+				com.ensoftcorp.atlas.core.db.graph.Edge newEdge = com.ensoftcorp.atlas.core.db.graph.Graph.U.createEdge(address, newFromNode, newToNode);
 				newEdge.tags().add(Queries.EVENT_FLOW_EDGE);
 			}
 		}
 	}
 	
-	public static Graph createEventFlowGraph(com.ensoftcorp.atlas.core.db.graph.Graph graph, AtlasSet<GraphElement> highlightedNodes){
+	public static Graph createEventFlowGraph(com.ensoftcorp.atlas.core.db.graph.Graph graph, AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> highlightedNodes){
 		Graph newGraph = Utils.transformAtlasGraph(graph, highlightedNodes);
 		EventFlowGraphCreator efgCreator = new EventFlowGraphCreator(newGraph);
 		efgCreator.create();
@@ -157,15 +155,15 @@ public class Utils {
 	/**
 	 * Transform Atlas Graph into DOT Graph
 	 */
-	public static Graph transformAtlasGraph(com.ensoftcorp.atlas.core.db.graph.Graph graph, AtlasSet<GraphElement> highlightedNodes){
+	public static Graph transformAtlasGraph(com.ensoftcorp.atlas.core.db.graph.Graph graph, AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> highlightedNodes){
 		Graph newGraph = createNewGraph();
 		
-		for(GraphElement edge : graph.edges()){
-			GraphElement fromNode = edge.getNode(EdgeDirection.FROM);
+		for(com.ensoftcorp.atlas.core.db.graph.Edge edge : graph.edges()){
+			com.ensoftcorp.atlas.core.db.graph.Node fromNode = edge.getNode(EdgeDirection.FROM);
 			Node newFromNode = createNode(newGraph, fromNode.address().toAddressString());
 			newFromNode.setAttribute("label", escape(fromNode.attr().get(XCSG.name).toString()));
 			
-			GraphElement toNode = edge.getNode(EdgeDirection.TO);
+			com.ensoftcorp.atlas.core.db.graph.Node toNode = edge.getNode(EdgeDirection.TO);
 			Node newToNode = createNode(newGraph, toNode.address().toAddressString());
 			newToNode.setAttribute("label", escape(toNode.attr().get(XCSG.name).toString()));
 			
@@ -185,7 +183,7 @@ public class Utils {
 		}
 		
 		if(graph.edges().isEmpty() && graph.nodes().size() == 1){
-			GraphElement node = graph.nodes().getFirst();
+			com.ensoftcorp.atlas.core.db.graph.Node node = graph.nodes().getFirst();
 			Node newNode = createNode(newGraph, node.address().toAddressString());
 			newNode.setAttribute("label", escape(node.attr().get(XCSG.name).toString()));
 			if(highlightedNodes.contains(node)){
@@ -200,7 +198,7 @@ public class Utils {
 		Node EXIT_NODE = createNode(newGraph, "cfg1");
 		EXIT_NODE.setAttribute("cfg_type", "END");
 		
-		for(GraphElement node : graph.nodes()){
+		for(com.ensoftcorp.atlas.core.db.graph.Node node : graph.nodes()){
 			if(node.tags().containsAny(XCSG.controlFlowRoot)){
 				createEdge(newGraph, START_NODE, newGraph.findNode(node.address().toAddressString()));
 			}
@@ -249,10 +247,10 @@ public class Utils {
 		return newEdge;
 	}
 	
-	public static GraphElement findEdge(com.ensoftcorp.atlas.core.db.graph.Graph graph, GraphElement from, GraphElement to){
-		AtlasSet<GraphElement> edges = graph.edges(from, NodeDirection.OUT);
-		for(GraphElement edge : edges){
-			GraphElement node = edge.getNode(EdgeDirection.TO);
+	public static com.ensoftcorp.atlas.core.db.graph.Edge findEdge(com.ensoftcorp.atlas.core.db.graph.Graph graph, com.ensoftcorp.atlas.core.db.graph.Node from, com.ensoftcorp.atlas.core.db.graph.Node to){
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Edge> edges = graph.edges(from, NodeDirection.OUT);
+		for(com.ensoftcorp.atlas.core.db.graph.Edge edge : edges){
+			com.ensoftcorp.atlas.core.db.graph.Node node = edge.getNode(EdgeDirection.TO);
 			if(node.equals(to)){
 				return edge;
 			}
@@ -260,11 +258,11 @@ public class Utils {
 		return null;
 	}
 	
-	public static ArrayList<GraphElement> findEdges(com.ensoftcorp.atlas.core.db.graph.Graph graph, GraphElement from, GraphElement to){
-		ArrayList<GraphElement> result = new ArrayList<GraphElement>();
-		AtlasSet<GraphElement> edges = graph.edges(from, NodeDirection.OUT);
-		for(GraphElement edge : edges){
-			GraphElement node = edge.getNode(EdgeDirection.TO);
+	public static ArrayList<com.ensoftcorp.atlas.core.db.graph.Edge> findEdges(com.ensoftcorp.atlas.core.db.graph.Graph graph, com.ensoftcorp.atlas.core.db.graph.Node from, com.ensoftcorp.atlas.core.db.graph.Node to){
+		ArrayList<com.ensoftcorp.atlas.core.db.graph.Edge> result = new ArrayList<com.ensoftcorp.atlas.core.db.graph.Edge>();
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Edge> edges = graph.edges(from, NodeDirection.OUT);
+		for(com.ensoftcorp.atlas.core.db.graph.Edge edge : edges){
+			com.ensoftcorp.atlas.core.db.graph.Node node = edge.getNode(EdgeDirection.TO);
 			if(node.equals(to)){
 				result.add(edge);
 			}
@@ -272,8 +270,8 @@ public class Utils {
 		return result;
 	}
 	
-	public static GraphElement createEdge(GraphElement edge, GraphElement from, GraphElement to){
-		GraphElement newEdge = com.ensoftcorp.atlas.core.db.graph.Graph.U.createEdge(from, to);
+	public static com.ensoftcorp.atlas.core.db.graph.Edge createEdge(com.ensoftcorp.atlas.core.db.graph.Edge edge, com.ensoftcorp.atlas.core.db.graph.Node from, com.ensoftcorp.atlas.core.db.graph.Node to){
+		com.ensoftcorp.atlas.core.db.graph.Edge newEdge = com.ensoftcorp.atlas.core.db.graph.Graph.U.createEdge(from, to);
 		newEdge.tags().add(LinuxScripts.DUPLICATE_EDGE);
     	
     	for(String attr : edge.attr().keys()){
@@ -365,11 +363,11 @@ public class Utils {
 	 * @param graph
 	 * @return
 	 */
-	public static List<GraphElement> topologicalSort(com.ensoftcorp.atlas.core.db.graph.Graph graph){
-		LinkedHashSet<GraphElement> seen = new LinkedHashSet<GraphElement>(); 
-		List<GraphElement> explored = new ArrayList<GraphElement>();
+	public static List<com.ensoftcorp.atlas.core.db.graph.Node> topologicalSort(com.ensoftcorp.atlas.core.db.graph.Graph graph){
+		LinkedHashSet<com.ensoftcorp.atlas.core.db.graph.Node> seen = new LinkedHashSet<com.ensoftcorp.atlas.core.db.graph.Node>(); 
+		List<com.ensoftcorp.atlas.core.db.graph.Node> explored = new ArrayList<com.ensoftcorp.atlas.core.db.graph.Node>();
 		
-		for(GraphElement v : graph.nodes()){
+		for(com.ensoftcorp.atlas.core.db.graph.Node v : graph.nodes()){
 			if(!explored.contains(v)){
 				if(!DFS(graph, seen, explored, v)){
 					return null;
@@ -379,9 +377,9 @@ public class Utils {
 		return explored;
 	}
 	
-	public static boolean DFS(com.ensoftcorp.atlas.core.db.graph.Graph graph, LinkedHashSet<GraphElement> seen, List<GraphElement> explored, GraphElement v){
+	public static boolean DFS(com.ensoftcorp.atlas.core.db.graph.Graph graph, LinkedHashSet<com.ensoftcorp.atlas.core.db.graph.Node> seen, List<com.ensoftcorp.atlas.core.db.graph.Node> explored, com.ensoftcorp.atlas.core.db.graph.Node v){
 		seen.add(v);
-		for(GraphElement node: getChildNodes(graph, v)){
+		for(com.ensoftcorp.atlas.core.db.graph.Node node: getChildNodes(graph, v)){
 			if(!seen.contains(node)){
 				if(!DFS(graph, seen, explored, node))
 					return false;
@@ -397,8 +395,8 @@ public class Utils {
 	public static com.ensoftcorp.atlas.core.db.graph.Graph cutCyclesFromGraph(com.ensoftcorp.atlas.core.db.graph.Graph graph){
 		// First: remove self-loop edges
 		Q selfLoopQ = Common.empty();
-		for(GraphElement node : graph.nodes()){
-			GraphElement selfLoopEdge = findEdge(graph, node, node);
+		for(com.ensoftcorp.atlas.core.db.graph.Node node : graph.nodes()){
+			com.ensoftcorp.atlas.core.db.graph.Edge selfLoopEdge = findEdge(graph, node, node);
 			if(selfLoopEdge != null){
 				//debug(0, "Self Loop: ["+toString(node)+"] -> ["+toString(node)+"]");
 				Q selfLoopNode = Common.toQ(Common.toGraph(node));
@@ -411,10 +409,10 @@ public class Utils {
 		graph = graphQ.eval();
 		
 		// Second: cut the loop from the last node visited to the newly node visited
-		for(GraphElement node : graph.roots()){
+		for(com.ensoftcorp.atlas.core.db.graph.Node node : Common.toQ(graph.roots()).eval().nodes()){
 			Q backEdgedNodes = null;
 			do{
-				backEdgedNodes = cutLoopsInGraph(graph, node, new ArrayList<GraphElement>());
+				backEdgedNodes = cutLoopsInGraph(graph, node, new ArrayList<com.ensoftcorp.atlas.core.db.graph.Node>());
 				graphQ = Common.toQ(graph);
 				graphQ = graphQ.differenceEdges(backEdgedNodes);
 				graph = graphQ.eval();
@@ -423,10 +421,10 @@ public class Utils {
 		return graph;
 	}
 	
-	public static Q cutLoopsInGraph(com.ensoftcorp.atlas.core.db.graph.Graph graph, GraphElement node, ArrayList<GraphElement> path){
+	public static Q cutLoopsInGraph(com.ensoftcorp.atlas.core.db.graph.Graph graph, com.ensoftcorp.atlas.core.db.graph.Node node, ArrayList<com.ensoftcorp.atlas.core.db.graph.Node> path){
 		Q backEdgeQ = Common.empty();
 		path.add(node);
-		for(GraphElement child : getChildNodes(graph, node)){
+		for(com.ensoftcorp.atlas.core.db.graph.Node child : getChildNodes(graph, node)){
 			if(path.contains(child)){
 				Q nodeQ = Common.toQ(Common.toGraph(node));
 				Q childQ = Common.toQ(Common.toGraph(child));
@@ -437,26 +435,26 @@ public class Utils {
 				//DisplayUtil.displayGraph(Common.extend(backEdgeQ, XCSG.Contains).eval(), new Highlighter(), "QQ Processed Envelope");
 				return backEdgeQ;
 			}
-			backEdgeQ = backEdgeQ.union(cutLoopsInGraph(graph, child, new ArrayList<GraphElement>(path)));
+			backEdgeQ = backEdgeQ.union(cutLoopsInGraph(graph, child, new ArrayList<com.ensoftcorp.atlas.core.db.graph.Node>(path)));
 		}
 		return backEdgeQ;
 	}
 	
-	public static AtlasSet<GraphElement> getChildNodes(com.ensoftcorp.atlas.core.db.graph.Graph graph, GraphElement node){
-		AtlasSet<GraphElement> edges = graph.edges(node, NodeDirection.OUT);
-		AtlasSet<GraphElement> childNodes = new AtlasHashSet<GraphElement>();
-		for(GraphElement edge : edges){
-			GraphElement child = edge.getNode(EdgeDirection.TO);
+	public static AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> getChildNodes(com.ensoftcorp.atlas.core.db.graph.Graph graph, com.ensoftcorp.atlas.core.db.graph.Node node){
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Edge> edges = graph.edges(node, NodeDirection.OUT);
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> childNodes = new AtlasHashSet<com.ensoftcorp.atlas.core.db.graph.Node>();
+		for(com.ensoftcorp.atlas.core.db.graph.Edge edge : edges){
+			com.ensoftcorp.atlas.core.db.graph.Node child = edge.getNode(EdgeDirection.TO);
 			childNodes.add(child);
 		}
 		return childNodes;
 	}
 	
-	public static AtlasSet<GraphElement> getParentNodes(com.ensoftcorp.atlas.core.db.graph.Graph graph, GraphElement node){
-		AtlasSet<GraphElement> edges = graph.edges(node, NodeDirection.IN);
-		AtlasSet<GraphElement> parentNodes = new AtlasHashSet<GraphElement>();
-		for(GraphElement edge : edges){
-			GraphElement parent = edge.getNode(EdgeDirection.FROM);
+	public static AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> getParentNodes(com.ensoftcorp.atlas.core.db.graph.Graph graph, com.ensoftcorp.atlas.core.db.graph.Node node){
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Edge> edges = graph.edges(node, NodeDirection.IN);
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> parentNodes = new AtlasHashSet<com.ensoftcorp.atlas.core.db.graph.Node>();
+		for(com.ensoftcorp.atlas.core.db.graph.Edge edge : edges){
+			com.ensoftcorp.atlas.core.db.graph.Node parent = edge.getNode(EdgeDirection.FROM);
 			parentNodes.add(parent);
 		}
 		return parentNodes;
@@ -499,34 +497,34 @@ public class Utils {
 		}
 	}
 	
-	public static AtlasSet<GraphElement> difference(AtlasSet<GraphElement> a, AtlasSet<GraphElement> b){
-		AtlasSet<GraphElement> result =  new AtlasHashSet<GraphElement>(a);
-		for(GraphElement i : b)
+	public static AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> difference(AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> a, AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> b){
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> result =  new AtlasHashSet<com.ensoftcorp.atlas.core.db.graph.Node>(a);
+		for(com.ensoftcorp.atlas.core.db.graph.Node i : b)
 			result.remove(i);
 		return result;
 	}
 	
-	public static boolean isSubSet(AtlasSet<GraphElement> A, AtlasSet<GraphElement> B)
+	public static boolean isSubSet(AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> A, AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> B)
 	{
-		for(GraphElement a : A){
+		for(com.ensoftcorp.atlas.core.db.graph.Node a : A){
 			if(!B.contains(a))
 				return false;
 		}
 		return true;
 	}
 	
-	public static AtlasSet<GraphElement> intersection(AtlasSet<GraphElement> a, AtlasSet<GraphElement> b){
-		AtlasSet<GraphElement> result = new AtlasHashSet<GraphElement>(a);
-		for(GraphElement i : b){
+	public static AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> intersection(AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> a, AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> b){
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> result = new AtlasHashSet<com.ensoftcorp.atlas.core.db.graph.Node>(a);
+		for(com.ensoftcorp.atlas.core.db.graph.Node i : b){
 			if(!result.contains(i))
 				result.remove(i);
 		}
 		return result;
 	}
 	
-	public static AtlasSet<GraphElement> toAtlasSet(HashSet<GraphElement> list){
-		AtlasSet<GraphElement> result = new AtlasHashSet<GraphElement>();
-		for(GraphElement element : list){
+	public static AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> toAtlasSet(HashSet<com.ensoftcorp.atlas.core.db.graph.Node> list){
+		AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> result = new AtlasHashSet<com.ensoftcorp.atlas.core.db.graph.Node>();
+		for(com.ensoftcorp.atlas.core.db.graph.Node element : list){
 			result.add(element);
 		}
 		return result;

@@ -5,28 +5,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-import net.sf.javabdd.BDD;
-import net.sf.javabdd.BDDFactory;
-import net.sf.javabdd.BuDDyFactory;
-
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.EdgeDirection;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.NodeDirection;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.Highlighter;
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.java.core.script.Common;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 import com.iastate.verifier.internal.Utils;
 
+import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDFactory;
+import net.sf.javabdd.BuDDyFactory;
+
 public class FeasibilityChecker {
 
-	private ArrayList<ArrayList<GraphElement>> paths;
+	private ArrayList<ArrayList<Node>> paths;
 	private HashMap<String, Integer> constraintsMap;
-	private GraphElement entryNode;
+	private Node entryNode;
 	
 	//private HashMap<GraphElement, String> nodeConstraintMap;
 	private Graph functionCFG;
@@ -63,17 +64,17 @@ public class FeasibilityChecker {
 			return;
 		}
 		//Utils.debug(0, "Started!");
-		this.paths = new ArrayList<ArrayList<GraphElement>>();
+		this.paths = new ArrayList<ArrayList<Node>>();
 		this.constraintsMap = new HashMap<String, Integer>();
 		//this.nodeConstraintMap = new HashMap<GraphElement, String>();
-		GraphElement entry = this.functionCFG.nodes().taggedWithAll(XCSG.controlFlowRoot).getFirst();
+		Node entry = this.functionCFG.nodes().taggedWithAll(XCSG.controlFlowRoot).getFirst();
 		this.entryNode = entry;
-		traverse(this.functionCFG, this.entryNode, new ArrayList<GraphElement>());
+		traverse(this.functionCFG, this.entryNode, new ArrayList<Node>());
 		
 		//Utils.debug(0, "There are [" + paths.size() + "] paths!");
 		
 		int conditionsCount = 0;
-		for(GraphElement node : this.functionCFG.nodes()){
+		for(Node node : this.functionCFG.nodes()){
 			if(node.tags().contains(XCSG.ControlFlowCondition)){
 				String conditionString = (String) node.attr().get(XCSG.name);
 				if(!constraintsMap.containsKey(conditionString)){
@@ -91,22 +92,22 @@ public class FeasibilityChecker {
 	}
 	
 	public void checkFeasibility(){
-		for(GraphElement node : this.functionCFG.nodes()){
+		for(Node node : this.functionCFG.nodes()){
 			testFeasibility(this.functionCFG, node);
 		}
 		//Utils.debug(0, "DONE!");
 	}
 	
-	public boolean checkPathFeasibility(List<GraphElement> path, GraphElement node){
-		ArrayList<ArrayList<GraphElement>> allPaths = new ArrayList<ArrayList<GraphElement>>();
-		for(ArrayList<GraphElement> p : paths){
+	public boolean checkPathFeasibility(List<Node> path, Node node){
+		ArrayList<ArrayList<Node>> allPaths = new ArrayList<ArrayList<Node>>();
+		for(ArrayList<Node> p : paths){
 			if(p.containsAll(path)){
 				allPaths.add(p);
 			}
 		}
 		
 		List<Condition> constraints = null;
-		for(ArrayList<GraphElement> p : allPaths){
+		for(ArrayList<Node> p : allPaths){
 			constraints = getConditionsSetFromPath(this.functionCFG, p, node);
 			if(isPathFeasible(constraints)){
 				Utils.debug(0, "FEASIBLE: " + toString(constraints));
@@ -117,16 +118,16 @@ public class FeasibilityChecker {
 		return false;
 	}
 	
-	public boolean checkFeasibility(GraphElement e1, GraphElement e2){
-		ArrayList<ArrayList<GraphElement>> allPaths = new ArrayList<ArrayList<GraphElement>>();
-		for(ArrayList<GraphElement> path : paths){
+	public boolean checkFeasibility(Node e1, Node e2){
+		ArrayList<ArrayList<Node>> allPaths = new ArrayList<ArrayList<Node>>();
+		for(ArrayList<Node> path : paths){
 			if(path.contains(e1) && !path.contains(e2)){
 				allPaths.add(path);
 			}
 		}
 		
 		List<Condition> constraints = null;
-		for(ArrayList<GraphElement> path : allPaths){
+		for(ArrayList<Node> path : allPaths){
 			constraints = getConditionsSetFromPath(this.functionCFG, path, path.get(path.size() - 1));
 			if(isPathFeasible(constraints))
 				return true;
@@ -134,15 +135,15 @@ public class FeasibilityChecker {
 		return false;
 	}
 	
-	public ArrayList<ArrayList<GraphElement>> getPathsContainingNodes(GraphElement firstNode, GraphElement secondNode, HashSet<GraphElement> excludedNodes){
-		ArrayList<ArrayList<GraphElement>> allPaths = new ArrayList<ArrayList<GraphElement>>();
-		for(ArrayList<GraphElement> path : paths){
+	public ArrayList<ArrayList<Node>> getPathsContainingNodes(Node firstNode, Node secondNode, HashSet<Node> excludedNodes){
+		ArrayList<ArrayList<Node>> allPaths = new ArrayList<ArrayList<Node>>();
+		for(ArrayList<Node> path : paths){
 			if(firstNode == null && secondNode == null){
 				allPaths.add(path);
 			}else if(firstNode == null && secondNode != null){
 				int indexOfNode = path.indexOf(secondNode);
 				if(indexOfNode >= 0){
-					ArrayList<GraphElement> subPath = new ArrayList<GraphElement>();
+					ArrayList<Node> subPath = new ArrayList<Node>();
 					subPath.addAll(path.subList(0, indexOfNode));
 					int size = subPath.size();
 					subPath.removeAll(excludedNodes);
@@ -153,7 +154,7 @@ public class FeasibilityChecker {
 			}else if(firstNode != null && secondNode == null){
 				int indexOfNode = path.indexOf(firstNode);
 				if(indexOfNode >= 0){
-					ArrayList<GraphElement> subPath = new ArrayList<GraphElement>();
+					ArrayList<Node> subPath = new ArrayList<Node>();
 					subPath.addAll(path.subList(indexOfNode + 1, path.size()));
 					int size = subPath.size();
 					subPath.removeAll(excludedNodes);
@@ -168,7 +169,7 @@ public class FeasibilityChecker {
 					if(firstNode.equals(secondNode)){
 						allPaths.add(path);
 					}else{
-						ArrayList<GraphElement> subPath = new ArrayList<GraphElement>();
+						ArrayList<Node> subPath = new ArrayList<Node>();
 						subPath.addAll(path.subList(indexOfFirstNode + 1, indexOfSecondNode));
 						int size = subPath.size();
 						subPath.removeAll(excludedNodes);
@@ -182,8 +183,8 @@ public class FeasibilityChecker {
 		return allPaths;
 	}
 	
-	public boolean checkPathFeasibility(GraphElement firstNode, GraphElement secondNode, HashSet<GraphElement> excludedNodes){
-		ArrayList<ArrayList<GraphElement>> allPaths = this.getPathsContainingNodes(firstNode, secondNode, excludedNodes);
+	public boolean checkPathFeasibility(Node firstNode, Node secondNode, HashSet<Node> excludedNodes){
+		ArrayList<ArrayList<Node>> allPaths = this.getPathsContainingNodes(firstNode, secondNode, excludedNodes);
 		
 		List<Condition> constraints = null;
 		if(allPaths.isEmpty()){
@@ -191,10 +192,10 @@ public class FeasibilityChecker {
 			return false;
 		}
 		
-		for(ArrayList<GraphElement> path : allPaths){
+		for(ArrayList<Node> path : allPaths){
 			// TODO: Check if checking whether a path ends with the exit node makes the result more correct
 			// In function (uinput_read): mutex_lock_interruptible cannot be dangling in a feasible path
-			GraphElement exitNode = path.get(path.size() - 1);
+			Node exitNode = path.get(path.size() - 1);
 			if(!exitNode.tags().contains(XCSG.controlFlowExitPoint))
 				continue;
 			constraints = getConditionsSetFromPath(this.functionCFG, path, exitNode);
@@ -217,8 +218,8 @@ public class FeasibilityChecker {
 	*/
 	
 	/*
-	public HashMap<GraphElement, Boolean> returnMayEventsFeasibilityMap(HashSet<String> mayEvents){
-		HashMap<GraphElement, Boolean> tryEventNodesFeasibilityMap = new HashMap<GraphElement, Boolean>();
+	public HashMap<Node, Boolean> returnMayEventsFeasibilityMap(HashSet<String> mayEvents){
+		HashMap<Node, Boolean> tryEventNodesFeasibilityMap = new HashMap<Node, Boolean>();
 		Q mayEventFuncs = Common.empty();
 		for(String f : mayEvents){
 			mayEventFuncs = mayEventFuncs.union(Queries.function(f));
@@ -230,11 +231,11 @@ public class FeasibilityChecker {
 		Q conditionalControlFlowNodes = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverse(leaves).nodesTaggedWithAll(XCSG.ControlFlowCondition);
 		// Filter return or non-conditional leaves. Those nodes contribute to return value always
 		Q conditions = Common.universe().edgesTaggedWithAll(XCSG.Contains).forward(conditionalControlFlowNodes).intersection(leaves);
-		AtlasSet<GraphElement> nodes = conditions.eval().nodes();
+		AtlasSet<Node> nodes = conditions.eval().nodes();
 		Highlighter h = new Highlighter();
-		for(GraphElement node : nodes){
+		for(Node node : nodes){
 			Q condition = Common.toQ(Common.toGraph(node));
-			GraphElement controlFlowNode = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(condition).nodesTaggedWithAll(XCSG.ControlFlowCondition).eval().nodes().getFirst();
+			Node controlFlowNode = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(condition).nodesTaggedWithAll(XCSG.ControlFlowCondition).eval().nodes().getFirst();
 			Q operator = Common.universe().edgesTaggedWithAll(XCSG.DataFlow_Edge).reverseStep(condition).nodesTaggedWithAll(XCSG.Operator);
 			Graph operatorGraph = operator.eval();
 			if(operatorGraph.nodes().size() == 0){
@@ -242,7 +243,7 @@ public class FeasibilityChecker {
 				tryEventNodesFeasibilityMap.put(controlFlowNode, true);
 				h.highlight(condition, Color.GREEN);
 			}else{
-				GraphElement operatorNode = operatorGraph.nodes().getFirst();
+				Node operatorNode = operatorGraph.nodes().getFirst();
 				if(operatorNode.tags().contains(XCSG.BinaryOperator)){
 					if(operatorNode.tags().contains(XCSG.EqualTo)){
 						// I have assumed that using the (==) operator with the return value from (conditional function) to be (== 0)
@@ -266,14 +267,14 @@ public class FeasibilityChecker {
 	}
 	*/
 	
-	private void traverse(Graph graph, GraphElement currentNode, ArrayList<GraphElement> path){
+	private void traverse(Graph graph, Node currentNode, ArrayList<Node> path){
 		path.add(currentNode);
 		
-		AtlasSet<GraphElement> children = getChildNodes(graph, currentNode);
+		AtlasSet<Node> children = getChildNodes(graph, currentNode);
 		if(children.size() > 1){
 			//path.add(currentNode);
-			for(GraphElement child : children){
-				ArrayList<GraphElement> newPath = new ArrayList<GraphElement>(path);
+			for(Node child : children){
+				ArrayList<Node> newPath = new ArrayList<Node>(path);
 				traverse(graph, child, newPath);
 			}
 		}else if(children.size() == 1){
@@ -285,11 +286,11 @@ public class FeasibilityChecker {
 	
 	/*
 	private void processConstraints(Graph graph){
-		for(GraphElement node : graph.nodes()){
-			ArrayList<ArrayList<GraphElement>> pathsContainingNode = getPathsContainingNode(node);
+		for(Node node : graph.nodes()){
+			ArrayList<ArrayList<Node>> pathsContainingNode = getPathsContainingNode(node);
 						
 			List<String> constraints = new ArrayList<String>();
-			for(ArrayList<GraphElement> path : pathsContainingNode){
+			for(ArrayList<Node> path : pathsContainingNode){
 				String condition = toString(getConditionsSetFromPath(graph, path, node));
 				if(!constraints.contains(condition))
 					constraints.add(condition);
@@ -313,9 +314,9 @@ public class FeasibilityChecker {
 	}
 	*/
 
-	public ArrayList<ArrayList<GraphElement>> getPathsContainingNode(GraphElement node){
-		ArrayList<ArrayList<GraphElement>> result = new ArrayList<ArrayList<GraphElement>>();
-		for(ArrayList<GraphElement> path : paths){
+	public ArrayList<ArrayList<Node>> getPathsContainingNode(Node node){
+		ArrayList<ArrayList<Node>> result = new ArrayList<ArrayList<Node>>();
+		for(ArrayList<Node> path : paths){
 			if(path.contains(node)){
 				result.add(path);
 			}
@@ -323,9 +324,9 @@ public class FeasibilityChecker {
 		return result;
 	}
 	
-	public ArrayList<ArrayList<GraphElement>> getPathsContainingNodes(GraphElement n1, GraphElement n2){
-		ArrayList<ArrayList<GraphElement>> result = new ArrayList<ArrayList<GraphElement>>();
-		for(ArrayList<GraphElement> path : paths){
+	public ArrayList<ArrayList<Node>> getPathsContainingNodes(Node n1, Node n2){
+		ArrayList<ArrayList<Node>> result = new ArrayList<ArrayList<Node>>();
+		for(ArrayList<Node> path : paths){
 			if(path.contains(n1) && path.contains(n2)){
 				result.add(path);
 			}
@@ -333,24 +334,24 @@ public class FeasibilityChecker {
 		return result;
 	}
 	
-	private List<Condition> getConditionsSetFromPath(Graph graph, ArrayList<GraphElement> path, GraphElement node){
+	private List<Condition> getConditionsSetFromPath(Graph graph, ArrayList<Node> path, Node node){
 		List<Condition> constraints = new ArrayList<Condition>();
 		//List<Condition> tryConditions = new ArrayList<Condition>();
 		int count = -1;
-		for(GraphElement element : path){
+		for(Node element : path){
 			++count;
 			//Utils.debug(0, Utils.toString(element));
 			if(element.equals(node))
 				break;
 			if(element.tags().contains(XCSG.ControlFlowCondition)){
-				GraphElement nextNode = path.get(count + 1);
-				//GraphElement edge = Utils.findEdge(graph, element, nextNode);
-				GraphElement edge = null;
-				ArrayList<GraphElement> edges = Utils.findEdges(graph, element, nextNode);
+				Node nextNode = path.get(count + 1);
+				//Node edge = Utils.findEdge(graph, element, nextNode);
+				Edge edge = null;
+				ArrayList<Edge> edges = Utils.findEdges(graph, element, nextNode);
 				if(edges.size() == 1){
 					edge = edges.get(0);
 				}else if(edges.size() > 1){
-					for(GraphElement e : edges){
+					for(Edge e : edges){
 						if(e.attr().containsKey(XCSG.conditionValue)){
 							edge = e;
 							break;
@@ -387,25 +388,25 @@ public class FeasibilityChecker {
 		return constraints;
 	}
 	
-	private AtlasSet<GraphElement> getChildNodes(Graph graph, GraphElement node){
-		AtlasSet<GraphElement> edges = graph.edges(node, NodeDirection.OUT);
-		AtlasSet<GraphElement> backEdges = edges.taggedWithAll(XCSG.ControlFlowBackEdge);
-		AtlasSet<GraphElement> childNodes = new AtlasHashSet<GraphElement>();
+	private AtlasSet<Node> getChildNodes(Graph graph, Node node){
+		AtlasSet<Edge> edges = graph.edges(node, NodeDirection.OUT);
+		AtlasSet<Edge> backEdges = edges.taggedWithAll(XCSG.ControlFlowBackEdge);
+		AtlasSet<Node> childNodes = new AtlasHashSet<Node>();
 		
-		for(GraphElement edge : edges){
+		for(Edge edge : edges){
 			if(backEdges.contains(edge))
 				continue;
-			GraphElement child = edge.getNode(EdgeDirection.TO);
+			Node child = edge.getNode(EdgeDirection.TO);
 			childNodes.add(child);
 		}
 		return childNodes.taggedWithAll(XCSG.ControlFlow_Node);
 	}
 	
-	private void testFeasibility(Graph graph, GraphElement node){	
-		ArrayList<ArrayList<GraphElement>> pathsContainingNode = getPathsContainingNode(node);
+	private void testFeasibility(Graph graph, Node node){	
+		ArrayList<ArrayList<Node>> pathsContainingNode = getPathsContainingNode(node);
 		
 		List<Condition> constraints = null;
-		for(ArrayList<GraphElement> path : pathsContainingNode){
+		for(ArrayList<Node> path : pathsContainingNode){
 			constraints = getConditionsSetFromPath(graph, path, node);
 			boolean isFeasible = isPathFeasible(constraints);
 			Utils.debug(0, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");

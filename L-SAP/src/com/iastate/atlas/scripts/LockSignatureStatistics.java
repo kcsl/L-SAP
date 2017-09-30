@@ -1,7 +1,5 @@
 package com.iastate.atlas.scripts;
 
-import static com.ensoftcorp.atlas.core.script.Common.universe;
-
 import java.awt.Color;
 import java.io.File;
 import java.util.ArrayList;
@@ -9,8 +7,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import com.ensoftcorp.atlas.core.db.graph.Graph;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.NodeDirection;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
@@ -20,8 +18,8 @@ import com.ensoftcorp.atlas.core.index.common.SourceCorrespondence;
 import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.markup.MarkupFromH;
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.java.core.script.Common;
 import com.ensoftcorp.atlas.ui.viewer.graph.SaveUtil;
 import com.iastate.atlas.dot.DOTGraph;
 import com.iastate.atlas.efg.EFGFactory;
@@ -31,13 +29,13 @@ import com.iastate.verifier.internal.Utils;
 public class LockSignatureStatistics {
 	
 	private File RESULTS_DIRECTORY;
-	private GraphElement signature;
+	private Node signature;
 	private Graph mpg;
 	private Q verifiedLocks;
 	private Q doubleLocks;
 	private Q danglingLocks;
 	private Q partiallyLocks;
-	private HashMap<GraphElement, HashSet<MatchingPair>> pairs;
+	private HashMap<Node, HashSet<MatchingPair>> pairs;
 	
 	private final String IMAGE_EXTENSION = ".png";
 	private final boolean SAVE_DOT_FORMAT = false;
@@ -47,7 +45,7 @@ public class LockSignatureStatistics {
 		PAIRED, PARTIALLY_PAIRED, DEADLOCK, UNPAIRED
 	}
 	
-	public LockSignatureStatistics(GraphElement sig, Graph envelope, HashMap<GraphElement, HashSet<MatchingPair>> matchingPairs, Q vLocks, Q dLocks, Q dnLocks, Q pLocks) {
+	public LockSignatureStatistics(Node sig, Graph envelope, HashMap<Node, HashSet<MatchingPair>> matchingPairs, Q vLocks, Q dLocks, Q dnLocks, Q pLocks) {
 		this.setSignature(sig);
 		this.setMpg(envelope);
 		this.setPairs(matchingPairs);
@@ -60,30 +58,30 @@ public class LockSignatureStatistics {
 	public void process(){
 		// A paired lock is never partially paired or unpaired or deadlock
 		Q pairedLocks = this.getVerifiedLocks().difference(this.getPartiallyLocks(), this.getDanglingLocks(), this.getDoubleLocks());
-		for(GraphElement lock : pairedLocks.eval().nodes()){
+		for(Node lock : pairedLocks.eval().nodes()){
 			this.processLock(lock, STATUS.PAIRED);
 		}
 		
 		// A partially paired lock should not be a deadlock
 		Q partiallyPairedLocks = this.getPartiallyLocks().difference(this.getDoubleLocks());
-		for(GraphElement lock : partiallyPairedLocks.eval().nodes()){
+		for(Node lock : partiallyPairedLocks.eval().nodes()){
 			this.processLock(lock, STATUS.PARTIALLY_PAIRED);
 		}
 		
 		// A deadlock lock is only if it has deadlock
 		Q deadlockPairedLocks = this.getDoubleLocks();
-		for(GraphElement lock : deadlockPairedLocks.eval().nodes()){
+		for(Node lock : deadlockPairedLocks.eval().nodes()){
 			this.processLock(lock, STATUS.DEADLOCK);
 		}
 		
 		// An unpaired lock cannot be partially paired or paired
 		Q unpairedLocks = this.getDanglingLocks().difference(this.getVerifiedLocks(), this.getPartiallyLocks());
-		for(GraphElement lock : unpairedLocks.eval().nodes()){
+		for(Node lock : unpairedLocks.eval().nodes()){
 			this.processLock(lock, STATUS.UNPAIRED);
 		}
 	}
 	
-	private void processLock(GraphElement lock, STATUS status){
+	private void processLock(Node lock, STATUS status){
 		Utils.debug(0, "Processing Lock:" + (++LinuxScripts.LOCK_PROGRESS_COUNT));
 		
 		// STEP 1: CREATE A LOCK FOLDER
@@ -92,11 +90,11 @@ public class LockSignatureStatistics {
 			return;
 		}
 		
-		AtlasSet<GraphElement> unlocks = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> unlocks = new AtlasHashSet<Node>();
 		if(!status.equals(STATUS.UNPAIRED)){
 			HashSet<MatchingPair> matchingPairs = this.pairs.get(lock);
 			for(MatchingPair pair : matchingPairs){
-				GraphElement unlock = pair.getSecondEvent();
+				Node unlock = pair.getSecondEvent();
 				if(unlock != null){
 					unlocks.add(unlock);
 				}
@@ -126,8 +124,8 @@ public class LockSignatureStatistics {
 		// STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG
 		//Log.info("STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG");
 		Q mpgFunctionsQ = mpgForLock.difference(mpgForLock.leaves());
-		AtlasSet<GraphElement> mpgFunctions = mpgFunctionsQ.eval().nodes();
-		for(GraphElement mpgFunction : mpgFunctions){
+		AtlasSet<Node> mpgFunctions = mpgFunctionsQ.eval().nodes();
+		for(Node mpgFunction : mpgFunctions){
 			String methodName = mpgFunction.getAttr(XCSG.name).toString();
 			Utils.debug(0, "FUNCTION [" + methodName + "]");
 			SourceCorrespondence sc = (SourceCorrespondence) mpgFunction.attr().get(XCSG.sourceCorrespondence);
@@ -177,7 +175,7 @@ public class LockSignatureStatistics {
 			nodes = efgGraph.nodes().size();
 			edges = efgGraph.edges().size();
 			conditions = 0;
-			for(GraphElement node : efg.eval().nodes()){
+			for(Node node : efg.eval().nodes()){
 				if(efgGraph.edges(node, NodeDirection.OUT).size() > 1){
 					conditions++;
 				}
@@ -195,7 +193,7 @@ public class LockSignatureStatistics {
 		Utils.debug(0, "Done Processing Lock:" + (LinuxScripts.LOCK_PROGRESS_COUNT));
 	}
 	
-	private boolean createLockFolder(GraphElement lock, STATUS status){
+	private boolean createLockFolder(Node lock, STATUS status){
 		String scString = "<external>";
 		SourceCorrespondence sc = (SourceCorrespondence) lock.attr().get(XCSG.sourceCorrespondence);
 		if(sc != null){
@@ -227,7 +225,7 @@ public class LockSignatureStatistics {
 		return true;
 	}
 	
-	private Q getMPGforLock(GraphElement lock, AtlasSet<GraphElement> unlocks){
+	private Q getMPGforLock(Node lock, AtlasSet<Node> unlocks){
 		Q mpgForLock = this.mpg(Queries.getFunctionContainingElement(lock), Queries.getFunctionContainingElement(Common.toQ(unlocks)));
 		return mpgForLock;
 	}
@@ -270,13 +268,13 @@ public class LockSignatureStatistics {
 		// Call-site Events
 		Q callsiteEvents = Common.empty();
 		
-		Q callSites = universe().edgesTaggedWithAll(XCSG.Contains).forward(cfgNodes).nodesTaggedWithAll(XCSG.CallSite);
-		AtlasSet<GraphElement> callsiteNodes = callSites.eval().nodes();
+		Q callSites = Common.universe().edgesTaggedWithAll(XCSG.Contains).forward(cfgNodes).nodesTaggedWithAll(XCSG.CallSite);
+		AtlasSet<Node> callsiteNodes = callSites.eval().nodes();
 		
-		for(GraphElement callsiteNode : callsiteNodes){
-			Q calledFunctions = universe().edgesTaggedWithAny(XCSG.InvokedFunction, XCSG.InvokedSignature).successors(Common.toQ(callsiteNode));
+		for(Node callsiteNode : callsiteNodes){
+			Q calledFunctions = Common.universe().edgesTaggedWithAny(XCSG.InvokedFunction, XCSG.InvokedSignature).successors(Common.toQ(callsiteNode));
 			if(!calledFunctions.intersection(mpgFunctions).eval().nodes().isEmpty()){
-				Q cfgNode = universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(Common.toQ(callsiteNode)).nodesTaggedWithAll(XCSG.ControlFlow_Node);
+				Q cfgNode = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(Common.toQ(callsiteNode)).nodesTaggedWithAll(XCSG.ControlFlow_Node);
 				callsiteEvents = callsiteEvents.union(cfgNode);
 			}			
 		}
@@ -288,11 +286,11 @@ public class LockSignatureStatistics {
 		return string.replace('/', '@');
 	}
 
-	public GraphElement getSignature() {
+	public Node getSignature() {
 		return signature;
 	}
 
-	public void setSignature(GraphElement signature) {
+	public void setSignature(Node signature) {
 		this.signature = signature;
 	}
 
@@ -336,11 +334,11 @@ public class LockSignatureStatistics {
 		this.partiallyLocks = partiallyLocks;
 	}
 
-	public HashMap<GraphElement, HashSet<MatchingPair>> getPairs() {
+	public HashMap<Node, HashSet<MatchingPair>> getPairs() {
 		return pairs;
 	}
 
-	public void setPairs(HashMap<GraphElement, HashSet<MatchingPair>> pairs) {
+	public void setPairs(HashMap<Node, HashSet<MatchingPair>> pairs) {
 		this.pairs = pairs;
 	}
 	

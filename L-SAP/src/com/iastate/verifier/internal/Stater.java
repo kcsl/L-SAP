@@ -3,7 +3,7 @@ package com.iastate.verifier.internal;
 import java.util.Date;
 import java.util.HashSet;
 
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 
 public class Stater {
 
@@ -11,50 +11,50 @@ public class Stater {
 	
 	private double processingTime;
 	
-	private HashSet<GraphElement> e1Events;
+	private HashSet<Node> e1Events;
 	
-	private HashSet<GraphElement> e2Events;
+	private HashSet<Node> e2Events;
 	
 	/**
 	 * The count of L events that are verified with U on every execution path
 	 */
-	private HashSet<GraphElement> verifiedE1Events;
+	private HashSet<Node> verifiedE1Events;
 	
 	/**
 	 * The count of L events that are verified with U on some execution paths
 	 */
-	private HashSet<GraphElement> partiallyVerifiedE1Events;
+	private HashSet<Node> partiallyVerifiedE1Events;
 	
 	/**
 	 * The count of L events that are not verified with any U on every execution paths
 	 */
-	private HashSet<GraphElement> notVerifiedE1Events;
-	private HashSet<GraphElement> actualNotVerifiedE1Events;
+	private HashSet<Node> notVerifiedE1Events;
+	private HashSet<Node> actualNotVerifiedE1Events;
 	
 	/**
 	 * The count of L events that are followed by another L event causing a race condition
 	 */
-	private HashSet<GraphElement> racedE1Events;
-	private HashSet<GraphElement> actualRacedE1Events;
+	private HashSet<Node> racedE1Events;
+	private HashSet<Node> actualRacedE1Events;
 	
-	private HashSet<GraphElement> interproceduralVerification;
+	private HashSet<Node> interproceduralVerification;
 	
-	private HashSet<GraphElement> intraproceduralVerification;
+	private HashSet<Node> intraproceduralVerification;
 	
 	public Stater() {
 		this.startTime = System.currentTimeMillis();
 		Utils.debug(0, "Started at [" + new Date().toString() + "]");
 		
-		this.e1Events = new HashSet<GraphElement>(); 
-		this.e2Events = new HashSet<GraphElement>();
-		this.verifiedE1Events = new HashSet<GraphElement>();
-		this.partiallyVerifiedE1Events = new HashSet<GraphElement>();
-		this.notVerifiedE1Events = new HashSet<GraphElement>();
-		this.actualNotVerifiedE1Events = new HashSet<GraphElement>();
-		this.racedE1Events = new HashSet<GraphElement>();
-		this.actualRacedE1Events = new HashSet<GraphElement>();
-		this.interproceduralVerification = new HashSet<GraphElement>();
-		this.intraproceduralVerification = new HashSet<GraphElement>();
+		this.e1Events = new HashSet<Node>(); 
+		this.e2Events = new HashSet<Node>();
+		this.verifiedE1Events = new HashSet<Node>();
+		this.partiallyVerifiedE1Events = new HashSet<Node>();
+		this.notVerifiedE1Events = new HashSet<Node>();
+		this.actualNotVerifiedE1Events = new HashSet<Node>();
+		this.racedE1Events = new HashSet<Node>();
+		this.actualRacedE1Events = new HashSet<Node>();
+		this.interproceduralVerification = new HashSet<Node>();
+		this.intraproceduralVerification = new HashSet<Node>();
 	}
 	
 	public void done(){
@@ -79,83 +79,83 @@ public class Stater {
 		return this.processingTime;
 	}
 	
-	public HashSet<GraphElement> getE1Events() {
+	public HashSet<Node> getE1Events() {
 		return e1Events;
 	}
 
-	public void setE1Events(HashSet<GraphElement> l) {
+	public void setE1Events(HashSet<Node> l) {
 		this.e1Events = l;
 	}
 
-	public HashSet<GraphElement> getE2Events() {
+	public HashSet<Node> getE2Events() {
 		return e2Events;
 	}
 
-	public void setE2Events(HashSet<GraphElement> l) {
+	public void setE2Events(HashSet<Node> l) {
 		this.e2Events = l;
 	}
 
-	public HashSet<GraphElement> getPartiallyVerifiedE1Events() {
+	public HashSet<Node> getPartiallyVerifiedE1Events() {
 		return partiallyVerifiedE1Events;
 	}
 
-	public void setPartiallyVerifiedE1Events(HashSet<GraphElement> l) {
+	public void setPartiallyVerifiedE1Events(HashSet<Node> l) {
 		this.partiallyVerifiedE1Events = l;
 	}
 	
-	public HashSet<GraphElement> getVerifiedE1Events() {
+	public HashSet<Node> getVerifiedE1Events() {
 		return verifiedE1Events;
 	}
 
-	public void setVerifiedE1Events(HashSet<GraphElement> verifiedLEvents) {
+	public void setVerifiedE1Events(HashSet<Node> verifiedLEvents) {
 		this.verifiedE1Events = verifiedLEvents;
 	}
 
-	public HashSet<GraphElement> getNotVerifiedE1Events() {
+	public HashSet<Node> getNotVerifiedE1Events() {
 		return notVerifiedE1Events;
 	}
 
-	public void setNotVerifiedE1Events(HashSet<GraphElement> l) {
+	public void setNotVerifiedE1Events(HashSet<Node> l) {
 		this.notVerifiedE1Events = l;
 	}
 
-	public HashSet<GraphElement> getInterproceduralVerification() {
+	public HashSet<Node> getInterproceduralVerification() {
 		return interproceduralVerification;
 	}
 
-	public void setInterproceduralVerification(HashSet<GraphElement> interproceduralVerification) {
+	public void setInterproceduralVerification(HashSet<Node> interproceduralVerification) {
 		this.interproceduralVerification = interproceduralVerification;
 	}
 
-	public HashSet<GraphElement> getIntraproceduralVerification() {
+	public HashSet<Node> getIntraproceduralVerification() {
 		return intraproceduralVerification;
 	}
 
-	public void setIntraproceduralVerification(HashSet<GraphElement> intraproceduralVerification) {
+	public void setIntraproceduralVerification(HashSet<Node> intraproceduralVerification) {
 		this.intraproceduralVerification = intraproceduralVerification;
 	}
 	
-	public HashSet<GraphElement> getRacedE1Events() {
+	public HashSet<Node> getRacedE1Events() {
 		return racedE1Events;
 	}
 
-	public void setRacedE1Events(HashSet<GraphElement> l) {
+	public void setRacedE1Events(HashSet<Node> l) {
 		this.racedE1Events = l;
 	}
 	
-	public HashSet<GraphElement> getActualNotVerifiedE1Events() {
+	public HashSet<Node> getActualNotVerifiedE1Events() {
 		return actualNotVerifiedE1Events;
 	}
 
-	public void setActualNotVerifiedE1Events(HashSet<GraphElement> actualNotVerifiedE1Events) {
+	public void setActualNotVerifiedE1Events(HashSet<Node> actualNotVerifiedE1Events) {
 		this.actualNotVerifiedE1Events = actualNotVerifiedE1Events;
 	}
 
-	public HashSet<GraphElement> getActualRacedE1Events() {
+	public HashSet<Node> getActualRacedE1Events() {
 		return actualRacedE1Events;
 	}
 
-	public void setActualRacedE1Events(HashSet<GraphElement> actualRacedE1Events) {
+	public void setActualRacedE1Events(HashSet<Node> actualRacedE1Events) {
 		this.actualRacedE1Events = actualRacedE1Events;
 	}
 	

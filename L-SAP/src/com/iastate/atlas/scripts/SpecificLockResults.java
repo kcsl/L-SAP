@@ -1,14 +1,13 @@
 package com.iastate.atlas.scripts;
 
-import static com.ensoftcorp.atlas.core.script.Common.universe;
-
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
 import com.ensoftcorp.atlas.core.db.graph.Graph;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
@@ -16,8 +15,8 @@ import com.ensoftcorp.atlas.core.highlight.Highlighter;
 import com.ensoftcorp.atlas.core.highlight.Highlighter.ConflictStrategy;
 import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.java.core.script.Common;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 import com.iastate.atlas.efg.EFGFactory;
 import com.iastate.verifier.internal.MatchingPair;
@@ -25,20 +24,20 @@ import com.iastate.verifier.internal.Utils;
 
 public class SpecificLockResults {
 	
-	private GraphElement selectedLock;
-	private GraphElement signature;
+	private Node selectedLock;
+	private Node signature;
 	private Graph mpg;
 	private Q verifiedLocks;
 	private Q doubleLocks;
 	private Q danglingLocks;
 	private Q partiallyLocks;
-	private HashMap<GraphElement, HashSet<MatchingPair>> pairs;
+	private HashMap<Node, HashSet<MatchingPair>> pairs;
 	
 	public enum STATUS {
 		PAIRED, PARTIALLY_PAIRED, DEADLOCK, UNPAIRED
 	}
 	
-	public SpecificLockResults(GraphElement selected, GraphElement sig, Graph envelope, HashMap<GraphElement, HashSet<MatchingPair>> matchingPairs, Q vLocks, Q dLocks, Q dnLocks, Q pLocks) {
+	public SpecificLockResults(Node selected, Node sig, Graph envelope, HashMap<Node, HashSet<MatchingPair>> matchingPairs, Q vLocks, Q dLocks, Q dnLocks, Q pLocks) {
 		this.setSelectedLock(selected);
 		this.setSignature(sig);
 		this.setMpg(envelope);
@@ -54,7 +53,7 @@ public class SpecificLockResults {
 		Log.info("Processing Lock:" + (++LinuxScripts.LOCK_PROGRESS_COUNT));
 		// A paired lock is never partially paired or unpaired or deadlock
 		Q pairedLocks = this.getVerifiedLocks().difference(this.getPartiallyLocks(), this.getDanglingLocks(), this.getDoubleLocks());
-		for(GraphElement lock : pairedLocks.eval().nodes()){
+		for(Node lock : pairedLocks.eval().nodes()){
 			if(lock == selectedLock){
 				this.processLock(lock, STATUS.PAIRED);
 				result = "Paired: Lock is followed by UNLOCK on all execution paths.";
@@ -63,7 +62,7 @@ public class SpecificLockResults {
 		
 		// A partially paired lock should not be a deadlock
 		Q partiallyPairedLocks = this.getPartiallyLocks().difference(this.getDoubleLocks());
-		for(GraphElement lock : partiallyPairedLocks.eval().nodes()){
+		for(Node lock : partiallyPairedLocks.eval().nodes()){
 			if(lock == selectedLock){
 				this.processLock(lock, STATUS.PARTIALLY_PAIRED);
 				result = "Unpaired: There is a feasible path on which LOCK is not followed by UNLOCK";
@@ -72,7 +71,7 @@ public class SpecificLockResults {
 		
 		// A deadlock lock is only if it has deadlock
 		Q deadlockPairedLocks = this.getDoubleLocks();
-		for(GraphElement lock : deadlockPairedLocks.eval().nodes()){
+		for(Node lock : deadlockPairedLocks.eval().nodes()){
 			if(lock == selectedLock){
 				this.processLock(lock, STATUS.DEADLOCK);
 				result = "Deadlock: There is a feasible path on which LOCK is not followed by another LOCK";
@@ -81,7 +80,7 @@ public class SpecificLockResults {
 		
 		// An unpaired lock cannot be partially paired or paired
 		Q unpairedLocks = this.getDanglingLocks().difference(this.getVerifiedLocks(), this.getPartiallyLocks());
-		for(GraphElement lock : unpairedLocks.eval().nodes()){
+		for(Node lock : unpairedLocks.eval().nodes()){
 			if(lock == selectedLock){
 				this.processLock(lock, STATUS.UNPAIRED);
 				result = "Unpaired: There is a feasible path on which LOCK is not followed by UNLOCK";
@@ -90,14 +89,14 @@ public class SpecificLockResults {
 		return result;
 	}
 	
-	private void processLock(GraphElement lock, STATUS status){
+	private void processLock(Node lock, STATUS status){
 		Log.info("Processing Lock:" + (++LinuxScripts.LOCK_PROGRESS_COUNT));
 		
-		AtlasSet<GraphElement> unlocks = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> unlocks = new AtlasHashSet<Node>();
 		if(!status.equals(STATUS.UNPAIRED)){
 			HashSet<MatchingPair> matchingPairs = this.pairs.get(lock);
 			for(MatchingPair pair : matchingPairs){
-				GraphElement unlock = pair.getSecondEvent();
+				Node unlock = pair.getSecondEvent();
 				if(unlock != null){
 					unlocks.add(unlock);
 				}
@@ -119,8 +118,8 @@ public class SpecificLockResults {
 		// STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG
 		//Log.info("STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG");
 		Q mpgFunctionsQ = mpgForLock.difference(mpgForLock.leaves());
-		AtlasSet<GraphElement> mpgFunctions = mpgFunctionsQ.eval().nodes();
-		for(GraphElement mpgFunction : mpgFunctions){
+		AtlasSet<Node> mpgFunctions = mpgFunctionsQ.eval().nodes();
+		for(Node mpgFunction : mpgFunctions){
 			String methodName = mpgFunction.getAttr(XCSG.name).toString();
 			Utils.debug(0, "FUNCTION [" + methodName + "]");
 			
@@ -149,7 +148,7 @@ public class SpecificLockResults {
 		Utils.debug(0, "Done Processing Lock:" + (LinuxScripts.LOCK_PROGRESS_COUNT));
 	}
 	
-	private Q getMPGforLock(GraphElement lock, AtlasSet<GraphElement> unlocks){
+	private Q getMPGforLock(Node lock, AtlasSet<Node> unlocks){
 		Q mpgForLock = this.mpg(Queries.getFunctionContainingElement(lock), Queries.getFunctionContainingElement(Common.toQ(unlocks)));
 		return mpgForLock;
 	}
@@ -192,13 +191,13 @@ public class SpecificLockResults {
 		// Call-site Events
 		Q callsiteEvents = Common.empty();
 		
-		Q callSites = universe().edgesTaggedWithAll(XCSG.Contains).forward(cfgNodes).nodesTaggedWithAll(XCSG.CallSite);
-		AtlasSet<GraphElement> callsiteNodes = callSites.eval().nodes();
+		Q callSites = Common.universe().edgesTaggedWithAll(XCSG.Contains).forward(cfgNodes).nodesTaggedWithAll(XCSG.CallSite);
+		AtlasSet<Node> callsiteNodes = callSites.eval().nodes();
 		
-		for(GraphElement callsiteNode : callsiteNodes){
-			Q calledFunctions = universe().edgesTaggedWithAny(XCSG.InvokedFunction, XCSG.InvokedSignature).successors(Common.toQ(callsiteNode));
+		for(Node callsiteNode : callsiteNodes){
+			Q calledFunctions = Common.universe().edgesTaggedWithAny(XCSG.InvokedFunction, XCSG.InvokedSignature).successors(Common.toQ(callsiteNode));
 			if(!calledFunctions.intersection(mpgFunctions).eval().nodes().isEmpty()){
-				Q cfgNode = universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(Common.toQ(callsiteNode)).nodesTaggedWithAll(XCSG.ControlFlow_Node);
+				Q cfgNode = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(Common.toQ(callsiteNode)).nodesTaggedWithAll(XCSG.ControlFlow_Node);
 				callsiteEvents = callsiteEvents.union(cfgNode);
 			}			
 		}
@@ -206,11 +205,11 @@ public class SpecificLockResults {
 		return results;
 	}
 
-	public GraphElement getSignature() {
+	public Node getSignature() {
 		return signature;
 	}
 
-	public void setSignature(GraphElement signature) {
+	public void setSignature(Node signature) {
 		this.signature = signature;
 	}
 
@@ -254,19 +253,19 @@ public class SpecificLockResults {
 		this.partiallyLocks = partiallyLocks;
 	}
 
-	public HashMap<GraphElement, HashSet<MatchingPair>> getPairs() {
+	public HashMap<Node, HashSet<MatchingPair>> getPairs() {
 		return pairs;
 	}
 
-	public void setPairs(HashMap<GraphElement, HashSet<MatchingPair>> pairs) {
+	public void setPairs(HashMap<Node, HashSet<MatchingPair>> pairs) {
 		this.pairs = pairs;
 	}
 
-	public GraphElement getSelectedLock() {
+	public Node getSelectedLock() {
 		return selectedLock;
 	}
 
-	public void setSelectedLock(GraphElement selectedLock) {
+	public void setSelectedLock(Node selectedLock) {
 		this.selectedLock = selectedLock;
 	}
 	

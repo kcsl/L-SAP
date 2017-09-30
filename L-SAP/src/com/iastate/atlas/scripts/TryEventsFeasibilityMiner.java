@@ -4,14 +4,15 @@ import java.awt.Color;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import com.ensoftcorp.atlas.c.core.query.Attr.Edge;
+import com.ensoftcorp.atlas.c.core.query.Attr;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.Highlighter;
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.java.core.script.Common;
 import com.iastate.verifier.internal.Utils;
 
 public class TryEventsFeasibilityMiner {
@@ -28,8 +29,8 @@ public class TryEventsFeasibilityMiner {
 		returnMayEventsFeasibilityMap(mayLockFunctions);
 	}
 	
-	public HashMap<GraphElement, Boolean> returnMayEventsFeasibilityMap(HashSet<String> mayEvents){
-		HashMap<GraphElement, Boolean> tryEventNodesFeasibilityMap = new HashMap<GraphElement, Boolean>();
+	public HashMap<Node, Boolean> returnMayEventsFeasibilityMap(HashSet<String> mayEvents){
+		HashMap<Node, Boolean> tryEventNodesFeasibilityMap = new HashMap<Node, Boolean>();
 		Q mayEventFuncs = Common.empty();
 		for(String f : mayEvents){
 			mayEventFuncs = mayEventFuncs.union(Queries.function(f));
@@ -37,15 +38,15 @@ public class TryEventsFeasibilityMiner {
 		
 		Q functionReturn = Queries.functionReturn(mayEventFuncs);
 		//TODO: Check how to get the condition nodes more efficiently and systematically
-		Q leaves = Common.universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Edge.ADDRESS_OF, Edge.POINTER_DEREFERENCE).forward(functionReturn).leaves();
+		Q leaves = Common.universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Attr.Edge.ADDRESS_OF, Attr.Edge.POINTER_DEREFERENCE).forward(functionReturn).leaves();
 		Q conditionalControlFlowNodes = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverse(leaves).nodesTaggedWithAll(XCSG.ControlFlowCondition);
 		// Filter return or non-conditional leaves. Those nodes contribute to return value always
 		Q conditions = Common.universe().edgesTaggedWithAll(XCSG.Contains).forward(conditionalControlFlowNodes).intersection(leaves);
-		AtlasSet<GraphElement> nodes = conditions.eval().nodes();
+		AtlasSet<Node> nodes = conditions.eval().nodes();
 		Highlighter h = new Highlighter();
-		for(GraphElement node : nodes){
+		for(Node node : nodes){
 			Q condition = Common.toQ(Common.toGraph(node));
-			GraphElement controlFlowNode = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(condition).nodesTaggedWithAll(XCSG.ControlFlowCondition).eval().nodes().getFirst();
+			Node controlFlowNode = Common.universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(condition).nodesTaggedWithAll(XCSG.ControlFlowCondition).eval().nodes().getFirst();
 			Q operator = Common.universe().edgesTaggedWithAll(XCSG.DataFlow_Edge).reverseStep(condition).nodesTaggedWithAll(XCSG.Operator);
 			Graph operatorGraph = operator.eval();
 			if(operatorGraph.nodes().size() == 0){
@@ -53,7 +54,7 @@ public class TryEventsFeasibilityMiner {
 				tryEventNodesFeasibilityMap.put(controlFlowNode, true);
 				h.highlight(condition, Color.GREEN);
 			}else{
-				GraphElement operatorNode = operatorGraph.nodes().getFirst();
+				Node operatorNode = operatorGraph.nodes().getFirst();
 				if(operatorNode.tags().contains(XCSG.BinaryOperator)){
 					if(operatorNode.tags().contains(XCSG.EqualTo)){
 						// I have assumed that using the (==) operator with the return value from (conditional function) to be (== 0)
@@ -77,7 +78,7 @@ public class TryEventsFeasibilityMiner {
 	}
 	
 	
-	public Q keepUnrolling(GraphElement element){
+	public Q keepUnrolling(Node element){
 		Q elementQ = Common.toQ(Common.toGraph(element));
 		Q dfForward = elementQ;
 		Graph dfForwardGraph = dfForward.eval();
@@ -86,7 +87,7 @@ public class TryEventsFeasibilityMiner {
 		do{
 			preNodesCount = dfForwardGraph.nodes().size();
 			preEdgesCount = dfForwardGraph.edges().size();
-			dfForward = Common.universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Edge.ADDRESS_OF, Edge.POINTER_DEREFERENCE).forwardStep(dfForward);
+			dfForward = Common.universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Attr.Edge.ADDRESS_OF, Attr.Edge.POINTER_DEREFERENCE).forwardStep(dfForward);
 			Q leaves = dfForward.leaves();
 			Q leavesConditions = leaves.nodesTaggedWithAll(XCSG.DataFlowCondition);
 			if(leaves.eval().nodes() == leavesConditions.eval().nodes()){

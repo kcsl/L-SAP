@@ -13,6 +13,7 @@ import java.util.List;
 import com.ensoftcorp.atlas.c.core.query.Attr.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
@@ -81,7 +82,7 @@ public class LSAP {
 		return _verify(selected.eval().nodes().getFirst(), field, callsites, calls, cfgNodes, new HashSet<String>(callsitesOfInterest.subList(0, 8)), new HashSet<String>(callsitesOfInterest.subList(8, 10)), locks, unlocks);
 	}
 	
-	private static String _verify(GraphElement selectedLock, Q field, Q callsites, Q calls, Q cfgNodes, HashSet<String> locks, HashSet<String> unlocks, Q ls, Q us){
+	private static String _verify(Node selectedLock, Q field, Q callsites, Q calls, Q cfgNodes, HashSet<String> locks, HashSet<String> unlocks, Q ls, Q us){
 		LinuxScripts.deleteDuplicateNodes();
 		Queries.deleteEFGs();
 		Q mpg = Queries.mpg(callsites, locks, unlocks);	
@@ -102,15 +103,15 @@ public class LSAP {
 		}
 		
 		try {
-			return verify(selectedLock, field.eval().nodes().getFirst(), mpg, cfgNodes, ls.eval().nodes(), us.eval().nodes(), locks, unlocks, new HashMap<GraphElement, Boolean>());
+			return verify(selectedLock, field.eval().nodes().getFirst(), mpg, cfgNodes, ls.eval().nodes(), us.eval().nodes(), locks, unlocks, new HashMap<Node, Boolean>());
 		} catch (EFGCreationException | CFGDisconnectedException e) {
 			return null;
 		}
 	}
 	
-	public static String verify(GraphElement selectedLock, GraphElement object, Q envelope, Q mainEventNodes, AtlasSet<GraphElement> e1, AtlasSet<GraphElement> e2, HashSet<String> e1Functions, HashSet<String> e2Functions, HashMap<GraphElement, Boolean> feasibilityMap) throws EFGCreationException, CFGDisconnectedException{	
-		HashMap<GraphElement, Graph> functionFlowMap = new HashMap<GraphElement, Graph>();
-		HashMap<GraphElement, List<Q>> functionEventsMap = new HashMap<GraphElement, List<Q>>();
+	public static String verify(Node selectedLock, Node object, Q envelope, Q mainEventNodes, AtlasSet<Node> e1, AtlasSet<Node> e2, HashSet<String> e1Functions, HashSet<String> e2Functions, HashMap<Node, Boolean> feasibilityMap) throws EFGCreationException, CFGDisconnectedException{	
+		HashMap<Node, Graph> functionFlowMap = new HashMap<Node, Graph>();
+		HashMap<Node, List<Q>> functionEventsMap = new HashMap<Node, List<Q>>();
 		
 		Graph envelopeGraph = envelope.eval();
 		
@@ -135,7 +136,7 @@ public class LSAP {
 			envelopeFunctions.add(functionName);
 		}
 		
-		for(GraphElement function : envelopeGraph.nodes()){
+		for(Node function : envelopeGraph.nodes()){
 			if(e1.contains(function) || e2.contains(function))
 				continue;
 			
@@ -166,8 +167,8 @@ public class LSAP {
 			
 			functionFlowMap.put(function, efg.eval());
 			events.remove(events.size() - 1);
-			AtlasSet<GraphElement> mayEvents = new AtlasHashSet<GraphElement>();
-			for(GraphElement n : e1Events.eval().nodes()){
+			AtlasSet<Node> mayEvents = new AtlasHashSet<Node>();
+			for(Node n : e1Events.eval().nodes()){
 				if(feasibilityMap.containsKey(n)){
 					mayEvents.add(n);
 				}

@@ -1,9 +1,10 @@
 package com.iastate.atlas.dominator;
 
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.EdgeDirection;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.NodeDirection;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.graph.UncheckedGraph;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
@@ -42,14 +43,14 @@ public class ControlFlowGraph {
 	 */
 	public static final String CFG_EXIT_EDGE = "CFG_EXIT_EDGE";
 
-	private GraphElement masterExitNode;
+	private Node masterExitNode;
 
-	private GraphElement masterEntryNode;
+	private Node masterEntryNode;
 
 	public ControlFlowGraph(Graph g) {
 		
-		AtlasSet<GraphElement> nodes = new AtlasHashSet<GraphElement>();
-		AtlasSet<GraphElement> edges = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> nodes = new AtlasHashSet<Node>();
+		AtlasSet<Edge> edges = new AtlasHashSet<Edge>();
 		
 		nodes.addAll(g.nodes());
 		edges.addAll(g.edges());
@@ -68,9 +69,9 @@ public class ControlFlowGraph {
 	 * @return the master entry node along with the newly created edges
 	 */
 	private void setupMasterEntryNode(
-			AtlasSet<GraphElement> inputNodes, 
-			AtlasSet<GraphElement> outputNodes,
-			AtlasSet<GraphElement> outputEdges){
+			AtlasSet<Node> inputNodes, 
+			AtlasSet<Node> outputNodes,
+			AtlasSet<Edge> outputEdges){
 		
 		masterEntryNode = Graph.U.createNode();
 		masterEntryNode.attr().put(XCSG.name, CFG_MASTER_ENTRY_NODE);
@@ -78,7 +79,7 @@ public class ControlFlowGraph {
 		masterEntryNode.tag(XCSG.ControlFlow_Node);
 		outputNodes.add(masterEntryNode);
 		
-		GraphElement newEdge = Graph.U.createEdge(masterEntryNode, inputNodes.taggedWithAny(XCSG.controlFlowRoot).getFirst());
+		Edge newEdge = Graph.U.createEdge(masterEntryNode, inputNodes.taggedWithAny(XCSG.controlFlowRoot).getFirst());
 		newEdge.tag(XCSG.ControlFlow_Edge);
 		newEdge.tag(CFG_ENTRY_EDGE);
 		outputEdges.add(newEdge);
@@ -91,9 +92,9 @@ public class ControlFlowGraph {
 	 * @return the master exit node along with the newly created edges
 	 */
 	private void setupMasterExitNode(
-			AtlasSet<GraphElement> inputNodes, 
-			AtlasSet<GraphElement> outputNodes,
-			AtlasSet<GraphElement> outputEdges){
+			AtlasSet<Node> inputNodes, 
+			AtlasSet<Node> outputNodes,
+			AtlasSet<Edge> outputEdges){
 		
 		masterExitNode = Graph.U.createNode();
 		masterExitNode.attr().put(XCSG.name, CFG_MASTER_EXIT_NODE);
@@ -101,8 +102,8 @@ public class ControlFlowGraph {
 		masterExitNode.tag(XCSG.ControlFlow_Node);
 		outputNodes.add(masterExitNode);
 		
-		for(GraphElement exitNode : inputNodes.taggedWithAny(XCSG.controlFlowExitPoint)){
-			GraphElement edge = Graph.U.createEdge(exitNode, masterExitNode);
+		for(Node exitNode : inputNodes.taggedWithAny(XCSG.controlFlowExitPoint)){
+			Edge edge = Graph.U.createEdge(exitNode, masterExitNode);
 			edge.tag(XCSG.ControlFlow_Edge);
 			edge.tag(CFG_EXIT_EDGE);
 			outputEdges.add(edge);
@@ -119,11 +120,11 @@ public class ControlFlowGraph {
 	 * @param node
 	 * @return Predecessors of node
 	 */
-	public AtlasSet<GraphElement> getPredecessors(GraphElement node){
-		AtlasSet<GraphElement> edges = this.graph.edges(node, NodeDirection.IN);
-		AtlasSet<GraphElement> predecessors = new AtlasHashSet<GraphElement>();
-		for(GraphElement edge : edges){
-			GraphElement parent = edge.getNode(EdgeDirection.FROM);
+	public AtlasSet<Node> getPredecessors(Node node){
+		AtlasSet<Edge> edges = this.graph.edges(node, NodeDirection.IN);
+		AtlasSet<Node> predecessors = new AtlasHashSet<Node>();
+		for(Edge edge : edges){
+			Node parent = edge.getNode(EdgeDirection.FROM);
 			predecessors.add(parent);
 		}
 		return predecessors;
@@ -134,11 +135,11 @@ public class ControlFlowGraph {
 	 * @param node
 	 * @return Successors of node
 	 */
-	public AtlasSet<GraphElement> getSuccessors(GraphElement node){
-		AtlasSet<GraphElement> edges = this.graph.edges(node, NodeDirection.OUT);
-		AtlasSet<GraphElement> successors = new AtlasHashSet<GraphElement>();
-		for(GraphElement edge : edges){
-			GraphElement child = edge.getNode(EdgeDirection.TO);
+	public AtlasSet<Node> getSuccessors(Node node){
+		AtlasSet<Edge> edges = this.graph.edges(node, NodeDirection.OUT);
+		AtlasSet<Node> successors = new AtlasHashSet<Node>();
+		for(Edge edge : edges){
+			Node child = edge.getNode(EdgeDirection.TO);
 			successors.add(child);
 		}
 		return successors;
@@ -148,7 +149,7 @@ public class ControlFlowGraph {
 	 * Returns the master entry node
 	 * @return the master entry node
 	 */
-	public GraphElement getEntryNode(){
+	public Node getEntryNode(){
 		return masterEntryNode;
 	}
 	
@@ -156,7 +157,7 @@ public class ControlFlowGraph {
 	 * Returns the master exit node
 	 * @return the master exit node
 	 */
-	public GraphElement getExitNode(){
+	public Node getExitNode(){
 		return masterExitNode;
 	}
 }

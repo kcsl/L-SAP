@@ -1,31 +1,29 @@
-package edu.iastate.lsap;
+package com.iastate.lsap;
 
-import static com.ensoftcorp.atlas.core.script.Common.universe;
-
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.java.core.script.Common;
 
 public class Utilities {
 
 	public static Q method(String name) {
-		return universe().nodesTaggedWithAll(XCSG.Function).selectNode(XCSG.name, name); 
+		return Common.universe().nodesTaggedWithAll(XCSG.Function).selectNode(XCSG.name, name); 
 	}
 	
 	public static Q methodReturn(Q methods) {
-		return universe().edgesTaggedWithAll(XCSG.Contains).forwardStep(methods).nodesTaggedWithAll(XCSG.MasterReturn);
+		return Common.universe().edgesTaggedWithAll(XCSG.Contains).forwardStep(methods).nodesTaggedWithAll(XCSG.MasterReturn);
 	}
 	
 	public static Q MPG(Q callsites, Q lockMethods, Q unlockMethods, boolean includeLockUnlockMethods){
-		Q callEdges = universe().edgesTaggedWithAll(XCSG.Call);
+		Q callEdges = Common.universe().edgesTaggedWithAll(XCSG.Call);
 		Q mpg = Common.empty();
 		Q callL = Common.empty();
 		Q callU = Common.empty();
 		
-		AtlasSet<GraphElement> callsiteElements = callsites.eval().nodes();
-		for(GraphElement callsite : callsiteElements){
+		AtlasSet<Node> callsiteElements = callsites.eval().nodes();
+		for(Node callsite : callsiteElements){
 			Q method = getMethodContainingCallsite(Common.toQ(callsite));
 			Q calledMethods = calledMethods(Common.toQ(callsite));
 			Q calledLockMethods = calledMethods.intersection(lockMethods);
@@ -58,11 +56,11 @@ public class Utilities {
 	}
 	
 	public static Q calledMethods(Q callsite){
-		return universe().edgesTaggedWithAll(XCSG.InvokedFunction).successors(callsite);
+		return Common.universe().edgesTaggedWithAll(XCSG.InvokedFunction).successors(callsite);
 	}
 	
 	public static Q getMethodContainingCallsite(Q callsite){
-		Q containsEdges = universe().edgesTaggedWithAll(XCSG.Contains);
+		Q containsEdges = Common.universe().edgesTaggedWithAll(XCSG.Contains);
 		Q cfgNode = containsEdges.predecessors(callsite);
 		Q method = containsEdges.predecessors(cfgNode);
 		return method;

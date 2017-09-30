@@ -16,9 +16,10 @@ import java.util.Scanner;
 
 import javax.swing.JOptionPane;
 
-import com.ensoftcorp.atlas.c.core.query.Attr.Edge;
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
@@ -27,6 +28,7 @@ import com.ensoftcorp.atlas.core.highlight.Highlighter.ConflictStrategy;
 import com.ensoftcorp.atlas.core.index.common.SourceCorrespondence;
 import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.markup.MarkupFromH;
+import com.ensoftcorp.atlas.c.core.query.Attr;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.java.core.script.Common;
@@ -164,13 +166,13 @@ public class LinuxScripts {
 	}
 
 	public static void computeGlobalDataFlowEnvelope(HashSet<String> locks, HashSet<String> mayLocks, HashSet<String> unlocks, Q structureTypes, String feasibilityFileName) {
-		AtlasSet<GraphElement> e1 = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> e1 = new AtlasHashSet<Node>();
 		for(String l : locks){
 			e1.addAll(Queries.function(l).eval().nodes());
 		}
 		Q e1Functions = Common.toQ(Common.toGraph(e1));
 		
-		AtlasSet<GraphElement> e2 = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> e2 = new AtlasHashSet<Node>();
 		for(String u : unlocks){
 			e2.addAll(Queries.function(u).eval().nodes());
 		}
@@ -180,7 +182,7 @@ public class LinuxScripts {
 		specials.add("kmalloc");
 		//specials.add("kfree");
 		
-		AtlasSet<GraphElement> e3 = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> e3 = new AtlasHashSet<Node>();
 		for(String u : specials){
 			e3.addAll(Queries.function(u).eval().nodes());
 		}
@@ -188,15 +190,15 @@ public class LinuxScripts {
 				
 		Q params = methodParameter(e1Functions.union(e2Functions), 0);
 
-		Q dfReverseParams = universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Edge.ADDRESS_OF, Edge.POINTER_DEREFERENCE).reverseStep(params);
-		Q rev = universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Edge.ADDRESS_OF, Edge.POINTER_DEREFERENCE).reverse(params);
+		Q dfReverseParams = universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Attr.Edge.ADDRESS_OF, Attr.Edge.POINTER_DEREFERENCE).reverseStep(params);
+		Q rev = universe().edgesTaggedWithAny(XCSG.DataFlow_Edge, Attr.Edge.ADDRESS_OF, Attr.Edge.POINTER_DEREFERENCE).reverse(params);
 		Q signatures = universe().edgesTaggedWithAny(XCSG.TypeOf, XCSG.ReferencedType, XCSG.ArrayElementType).reverse(structureTypes);
 		signatures = signatures.roots().nodesTaggedWithAll(XCSG.Variable);
 		
 		compute(signatures, params, rev, specialFunctions, dfReverseParams, e1Functions, e2Functions, locks, unlocks, e1, e2, feasibilityAnnotator(mayLocks, feasibilityFileName));
 	}
 	
-	public static void compute(Q signatures, Q params, Q rev, Q specialFunctions, Q dfReverseParams, Q e1Functions, Q e2Functions, HashSet<String> locks, HashSet<String> unlocks, AtlasSet<GraphElement> e1, AtlasSet<GraphElement> e2, HashMap<GraphElement, Boolean> feasibilityMap){
+	public static void compute(Q signatures, Q params, Q rev, Q specialFunctions, Q dfReverseParams, Q e1Functions, Q e2Functions, HashSet<String> locks, HashSet<String> unlocks, AtlasSet<Node> e1, AtlasSet<Node> e2, HashMap<Node, Boolean> feasibilityMap){
 		Stater stater = new Stater();
 		int signaturesCount = 0;
 		double totalRunningTime = 0;
@@ -204,7 +206,7 @@ public class LinuxScripts {
 		int caseId = -1;
 		int objectIndex = 0;
 		long objectsCount = signatures.eval().nodes().size();
-		for(GraphElement object : signatures.eval().nodes()){
+		for(Node object : signatures.eval().nodes()){
 			Utils.debug(0, "Currently Analyzing Object: " + (++objectIndex) + "/" + objectsCount);
 			deleteDuplicateNodes();
 			Queries.deleteEFGs();
@@ -298,13 +300,13 @@ public class LinuxScripts {
 		Utils.debug(0, "******************************************");
 	}
 	
-	public static Stater verify(GraphElement object, Q envelope, Q mainEventNodes, AtlasSet<GraphElement> e1, AtlasSet<GraphElement> e2, HashSet<String> e1Functions, HashSet<String> e2Functions, HashMap<GraphElement, Boolean> feasibilityMap) throws EFGCreationException, CFGDisconnectedException{
+	public static Stater verify(Node object, Q envelope, Q mainEventNodes, AtlasSet<Node> e1, AtlasSet<Node> e2, HashSet<String> e1Functions, HashSet<String> e2Functions, HashMap<Node, Boolean> feasibilityMap) throws EFGCreationException, CFGDisconnectedException{
 		if(SAVE_GRAPHS)
 			clearGraphs();
 		
 		
-		HashMap<GraphElement, Graph> functionFlowMap = new HashMap<GraphElement, Graph>();
-		HashMap<GraphElement, List<Q>> functionEventsMap = new HashMap<GraphElement, List<Q>>();
+		HashMap<Node, Graph> functionFlowMap = new HashMap<Node, Graph>();
+		HashMap<Node, List<Q>> functionEventsMap = new HashMap<Node, List<Q>>();
 		
 		Graph envelopeGraph = envelope.eval();
 		
@@ -321,7 +323,7 @@ public class LinuxScripts {
 		}
 		
 		HashSet<String> envelopeFunctions = new HashSet<String>();
-		for(GraphElement function : envelopeGraph.nodes()){
+		for(Node function : envelopeGraph.nodes()){
 			if(e1.contains(function) || e2.contains(function))
 				continue;
 			
@@ -329,7 +331,7 @@ public class LinuxScripts {
 			envelopeFunctions.add(functionName);
 		}
 		
-		for(GraphElement function : envelopeGraph.nodes()){
+		for(Node function : envelopeGraph.nodes()){
 			if(e1.contains(function) || e2.contains(function))
 				continue;
 			
@@ -371,8 +373,8 @@ public class LinuxScripts {
 			
 			functionFlowMap.put(function, efg.eval());
 			events.remove(events.size() - 1);
-			AtlasSet<GraphElement> mayEvents = new AtlasHashSet<GraphElement>();
-			for(GraphElement n : e1Events.eval().nodes()){
+			AtlasSet<Node> mayEvents = new AtlasHashSet<Node>();
+			for(Node n : e1Events.eval().nodes()){
 				if(feasibilityMap.containsKey(n)){
 					mayEvents.add(n);
 				}
@@ -511,7 +513,7 @@ public class LinuxScripts {
 		if(g.nodes().isEmpty()){
 			return true;
 		}
-		for(GraphElement node : g.nodes()){
+		for(Node node : g.nodes()){
 			if(Utils.getChildNodes(g, node).isEmpty() && Utils.getParentNodes(g, node).isEmpty()){
 				return true;
 			}
@@ -522,14 +524,14 @@ public class LinuxScripts {
 	public static List<Q> getEventNodes(Q cfg, Q mainEventNodes, HashSet<String> envelopeFunctions, HashSet<String> e1, HashSet<String> e2){
 		Q controlFlowNodes = cfg.nodesTaggedWithAll(XCSG.ControlFlow_Node);
 		Q callSites = universe().edgesTaggedWithAll(XCSG.Contains).forward(controlFlowNodes).nodesTaggedWithAll(XCSG.CallSite);
-		AtlasSet<GraphElement> nodes = callSites.eval().nodes();
+		AtlasSet<Node> nodes = callSites.eval().nodes();
 		
 		Q e1Events = Common.empty();
 		Q e2Events = Common.empty();
 		Q envelopeEvents = Common.empty();
 		
-		AtlasSet<GraphElement> mainControlFlowNodes = mainEventNodes.eval().nodes();
-		for(GraphElement node : nodes){
+		AtlasSet<Node> mainControlFlowNodes = mainEventNodes.eval().nodes();
+		for(Node node : nodes){
 			Q controlFlowNode = universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(Common.toQ(Common.toGraph(node))).nodesTaggedWithAll(XCSG.ControlFlow_Node);
 			if(mainControlFlowNodes.contains(controlFlowNode.eval().nodes().getFirst())){
 				if(Queries.isCalling(node, e1)){
@@ -554,24 +556,24 @@ public class LinuxScripts {
 	}
 	
 	public static void deleteDuplicateNodes(){
-		AtlasSet<GraphElement> edges = universe().edgesTaggedWithAll(DUPLICATE_EDGE).eval().edges();
-		HashSet<GraphElement> toDelete = new HashSet<GraphElement>(); 
-		for(GraphElement edge : edges){
-			toDelete.add(edge);
+		AtlasSet<Edge> edges = universe().edgesTaggedWithAll(DUPLICATE_EDGE).eval().edges();
+		AtlasSet<Edge> edgesToDelete = new AtlasHashSet<Edge>(); 
+		for(Edge edge : edges){
+			edgesToDelete.add(edge);
 		}
 		
-		for(GraphElement edge : toDelete){
+		for(Edge edge : edgesToDelete){
 			Graph.U.delete(edge);
 		}
 		
-		AtlasSet<GraphElement> nodes = universe().nodesTaggedWithAll(DUPLICATE_NODE).eval().nodes();
+		AtlasSet<Node> nodes = universe().nodesTaggedWithAll(DUPLICATE_NODE).eval().nodes();
 		
-		toDelete = new HashSet<GraphElement>(); 
-		for(GraphElement node : nodes){
-			toDelete.add(node);
+		AtlasSet<Node> nodesToDelete = new AtlasHashSet<Node>(); 
+		for(Node node : nodes){
+			nodesToDelete.add(node);
 		}
 		
-		for(GraphElement node : toDelete){
+		for(Node node : nodesToDelete){
 			Graph.U.delete(node);
 		}
 	}
@@ -582,20 +584,20 @@ public class LinuxScripts {
 		return cfgConditions;
 	}
 	
-	public static HashMap<GraphElement, Boolean> feasibilityAnnotator(HashSet<String> mayEvents, String feasibilityFilePath){
+	public static HashMap<Node, Boolean> feasibilityAnnotator(HashSet<String> mayEvents, String feasibilityFilePath){
 		feasibilityFilePath = WORKSPACE_PATH + feasibilityFilePath;
-		HashMap<GraphElement, Boolean> mayEventsFeasibilityMapping = new HashMap<GraphElement, Boolean>();
+		HashMap<Node, Boolean> mayEventsFeasibilityMapping = new HashMap<Node, Boolean>();
 		if(!Feasibility_Enabled){
 			return mayEventsFeasibilityMapping;
 		}
-		AtlasSet<GraphElement> conditions = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> conditions = new AtlasHashSet<Node>();
 		for(String function : mayEvents){
 			Q callSites = universe().nodesTaggedWithAny(XCSG.CallSite).selectNode(XCSG.name, function + "(...)");
 			Q cfgConditions = universe().edgesTaggedWithAny(XCSG.Contains).reverseStep(callSites).nodesTaggedWithAny(XCSG.ControlFlowCondition);
 			conditions.addAll(cfgConditions.eval().nodes());
 		}
-		HashMap<String, GraphElement> sourceCorrespondenceMap = new HashMap<String, GraphElement>();
-		for(GraphElement condition : conditions){
+		HashMap<String, Node> sourceCorrespondenceMap = new HashMap<String, Node>();
+		for(Node condition : conditions){
 			String sourceCorrespondence = condition.getAttr(XCSG.sourceCorrespondence).toString();
 			sourceCorrespondenceMap.put(sourceCorrespondence, condition);
 		}
@@ -605,7 +607,7 @@ public class LinuxScripts {
 				Scanner reader = new Scanner(feasibilityFile);
 				while(reader.hasNextLine()){
 					String [] parts = reader.nextLine().split("@@@");
-					GraphElement condition = sourceCorrespondenceMap.get(parts[0]);
+					Node condition = sourceCorrespondenceMap.get(parts[0]);
 					
 					if(parts[1].equals("T")){
 						mayEventsFeasibilityMapping.put(condition, true);
@@ -623,7 +625,7 @@ public class LinuxScripts {
 			int index = 0;
 			try {
 				FileWriter writer = new FileWriter(feasibilityFile);
-				for(GraphElement condition : conditions){
+				for(Node condition : conditions){
 					++index;
 					String sourceCorrespondence = condition.getAttr(XCSG.sourceCorrespondence).toString();
 					String conditionText = condition.getAttr(XCSG.name).toString();

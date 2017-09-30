@@ -4,6 +4,7 @@ package com.iastate.atlas.efg;
 import static com.ensoftcorp.atlas.core.script.Common.universe;
 
 import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
@@ -37,9 +38,9 @@ public class EFGFactory {
 		Q eventFunctions = Queries.function("mutex_lock_nested").union(Queries.function("mutex_unlock"));
 		Q callSites = Common.universe().edgesTaggedWithAll(XCSG.Contains).forward(cfg).nodesTaggedWithAll(XCSG.CallSite);
 		
-		AtlasSet<GraphElement> callsiteNodes = callSites.eval().nodes();
+		AtlasSet<Node> callsiteNodes = callSites.eval().nodes();
 		
-		for(GraphElement callsiteNode : callsiteNodes){
+		for(Node callsiteNode : callsiteNodes){
 			Q calledFunctions = universe().edgesTaggedWithAny(XCSG.InvokedFunction, XCSG.InvokedSignature).successors(Common.toQ(callsiteNode));
 			if(!calledFunctions.intersection(eventFunctions).eval().nodes().isEmpty()){
 				Q cfgNode = universe().edgesTaggedWithAll(XCSG.Contains).reverseStep(Common.toQ(callsiteNode)).nodesTaggedWithAll(XCSG.ControlFlow_Node);

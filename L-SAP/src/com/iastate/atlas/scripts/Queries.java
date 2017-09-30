@@ -1,7 +1,7 @@
 package com.iastate.atlas.scripts;
 
+import static com.ensoftcorp.atlas.core.script.Common.edges;
 import static com.ensoftcorp.atlas.core.script.Common.universe;
-import static com.ensoftcorp.atlas.java.core.script.Common.edges;
 import static com.ensoftcorp.atlas.java.core.script.CommonQueries.methodParameter;
 
 import java.awt.Color;
@@ -13,8 +13,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
@@ -337,12 +339,12 @@ public class Queries {
 		
 	}
 	public static  Q mpg(Q callSiteNodes, HashSet<String> e1, HashSet<String> e2){
-		AtlasSet<GraphElement> nodes = callSiteNodes.eval().nodes();
-		HashMap<GraphElement, HashMap<String, AtlasSet<GraphElement>>> functionMap = new HashMap<GraphElement, HashMap<String,AtlasSet<GraphElement>>>(); 
+		AtlasSet<Node> nodes = callSiteNodes.eval().nodes();
+		HashMap<Node, HashMap<String, AtlasSet<Node>>> functionMap = new HashMap<Node, HashMap<String,AtlasSet<Node>>>(); 
 		
-		for(GraphElement node : nodes){
+		for(Node node : nodes){
 			Q functionQ = getFunctionContainingElement(node);
-			GraphElement functionNode = functionQ.eval().nodes().getFirst();
+			Node functionNode = functionQ.eval().nodes().getFirst();
 			
 			boolean callingLock = false;
 			boolean callingUnlock = false;
@@ -355,14 +357,14 @@ public class Queries {
 			}
 			
 			if(callingLock || callingUnlock){
-				HashMap<String, AtlasSet<GraphElement>> luMap = new HashMap<String, AtlasSet<GraphElement>>();
+				HashMap<String, AtlasSet<Node>> luMap = new HashMap<String, AtlasSet<Node>>();
 				
 				if(functionMap.containsKey(functionNode)){
 					luMap = functionMap.get(functionNode);
 				}
 				
 				if(callingLock){
-					AtlasSet<GraphElement> callL = new AtlasHashSet<GraphElement>();
+					AtlasSet<Node> callL = new AtlasHashSet<Node>();
 					if(luMap.containsKey("L")){
 						callL = luMap.get("L");
 					}
@@ -371,7 +373,7 @@ public class Queries {
 				}
 				
 				if(callingUnlock){
-					AtlasSet<GraphElement> callU = new AtlasHashSet<GraphElement>();
+					AtlasSet<Node> callU = new AtlasHashSet<Node>();
 					if(luMap.containsKey("U")){
 						callU = luMap.get("U");
 					}
@@ -382,12 +384,12 @@ public class Queries {
 			}
 		}
 			
-		AtlasSet<GraphElement> callL = new AtlasHashSet<GraphElement>();
-		AtlasSet<GraphElement> callU = new AtlasHashSet<GraphElement>();
-		AtlasSet<GraphElement> unbalanced = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> callL = new AtlasHashSet<Node>();
+		AtlasSet<Node> callU = new AtlasHashSet<Node>();
+		AtlasSet<Node> unbalanced = new AtlasHashSet<Node>();
 		
-		for(GraphElement f : functionMap.keySet()){
-			HashMap<String, AtlasSet<GraphElement>> nodesMap = functionMap.get(f);
+		for(Node f : functionMap.keySet()){
+			HashMap<String, AtlasSet<Node>> nodesMap = functionMap.get(f);
 			if(nodesMap.size() == 1 && nodesMap.keySet().contains("L")){
 				callL.add(f);
 				continue;
@@ -401,15 +403,15 @@ public class Queries {
 			callL.add(f);
 			callU.add(f);
 			
-			AtlasSet<GraphElement> lNodes = nodesMap.get("L");
+			AtlasSet<Node> lNodes = nodesMap.get("L");
 			List<Integer> ls = new ArrayList<Integer>();
-			for(GraphElement l : lNodes){
+			for(Node l : lNodes){
 				SourceCorrespondence sc = (SourceCorrespondence) l.attr().get(XCSG.sourceCorrespondence);
 				ls.add(sc.offset);
 			}
-			AtlasSet<GraphElement> uNodes = nodesMap.get("U");
+			AtlasSet<Node> uNodes = nodesMap.get("U");
 			List<Integer> us = new ArrayList<Integer>();
-			for(GraphElement u : uNodes){
+			for(Node u : uNodes){
 				SourceCorrespondence sc = (SourceCorrespondence) u.attr().get(XCSG.sourceCorrespondence);
 				us.add(sc.offset);
 			}
@@ -468,33 +470,33 @@ public class Queries {
 	 * Delete EFG tags from the index
 	 */
 	public static  void deleteEFGs(){
-		AtlasSet<GraphElement> edges = universe().edgesTaggedWithAll(EVENT_FLOW_EDGE).eval().edges();
-		HashSet<GraphElement> toDelete = new HashSet<GraphElement>(); 
-		for(GraphElement edge : edges){
-			toDelete.add(edge);
+		AtlasSet<Edge> edges = universe().edgesTaggedWithAll(EVENT_FLOW_EDGE).eval().edges();
+		AtlasSet<Edge> edgesToDelete = new AtlasHashSet<Edge>(); 
+		for(Edge edge : edges){
+			edgesToDelete.add(edge);
 		}
 		
-		for(GraphElement edge : toDelete){
+		for(Edge edge : edgesToDelete){
 			Graph.U.delete(edge);
 		}
 		
-		AtlasSet<GraphElement> nodes = universe().nodesTaggedWithAll(EVENT_FLOW_NODE).eval().nodes();
+		AtlasSet<Node> nodes = universe().nodesTaggedWithAll(EVENT_FLOW_NODE).eval().nodes();
 		
-		HashSet<GraphElement> ns = new HashSet<GraphElement>();
-		for(GraphElement node : nodes){
+		AtlasSet<Node> ns = new AtlasHashSet<Node>();
+		for(Node node : nodes){
 			ns.add(node);
 		}
 		
-		toDelete = new HashSet<GraphElement>(); 
-		for(GraphElement node : ns){
+		AtlasSet<Node> nodesToDelete = new AtlasHashSet<Node>(); 
+		for(Node node : ns){
 			node.tags().remove(EVENT_FLOW_NODE);
 			String name = (String) node.attr().get(XCSG.name);
 			if(name.equals(EVENT_FLOW_ENTRY_NODE) || name.equals(EVENT_FLOW_EXIT_NODE)){
-				toDelete.add(node);
+				nodesToDelete.add(node);
 			}
 		}
 		
-		for(GraphElement node : toDelete){
+		for(GraphElement node : nodesToDelete){
 			Graph.U.delete(node);
 		}
 	}

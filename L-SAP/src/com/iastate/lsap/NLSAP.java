@@ -1,4 +1,4 @@
-package edu.iastate.lsap;
+package com.iastate.lsap;
 
 import static com.ensoftcorp.atlas.core.script.Common.universe;
 import static com.ensoftcorp.atlas.java.core.script.CommonQueries.methodParameter;

@@ -5,13 +5,14 @@ import static com.ensoftcorp.atlas.core.script.Common.universe;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.EdgeDirection;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.graph.UncheckedGraph;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
+import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.iastate.atlas.dominator.ControlFlowGraph;
@@ -30,20 +31,20 @@ public class EventFlowGraphTransformation{
 	 * Superset of the nodes in the EFG.
 	 * Nodes which are retained by the EFG are tagged EFG_NODE.
 	 */
-	private AtlasSet<GraphElement> nodes;
+	private AtlasSet<Node> nodes;
 	
 	/**
 	 * The edges in the EFG.
 	 * Initially the edges in the given CFG.
 	 * Edges may be removed or inserted based on the events of interest.
 	 */
-	private AtlasSet<GraphElement> edges;
+	private AtlasSet<Edge> edges;
 	
 	/**
 	 * The given event nodes for constructing the EFG.
 	 * 
 	 */
-	private AtlasSet<GraphElement> eventNodes;
+	private AtlasSet<Node> eventNodes;
 	
 	/**
 	 * The CFG to operate on
@@ -65,13 +66,13 @@ public class EventFlowGraphTransformation{
 	 */
 	public static final String NEW_EFG_EDGE = "NEW_EFG_EDGE";
 	
-	public EventFlowGraphTransformation(Graph g, AtlasSet<GraphElement> eventNodes) {
+	public EventFlowGraphTransformation(Graph g, AtlasSet<Node> eventNodes) {
 		// Ahmed: Undo previous EFG transformations on this graph (if any)
 		// We should have a better way to index EFG edges by introducing an edge address that is associated with eventNodes
 		this.undoPreviousEFGTransformation(g);
 		this.cfg = new ControlFlowGraph(g);
-		this.nodes = new AtlasHashSet<GraphElement>(this.cfg.getGraph().nodes());
-		this.edges = new AtlasHashSet<GraphElement>(this.cfg.getGraph().edges());
+		this.nodes = new AtlasHashSet<Node>(this.cfg.getGraph().nodes());
+		this.edges = new AtlasHashSet<Edge>(this.cfg.getGraph().edges());
 		this.eventNodes = eventNodes;
 	}
 	/**
@@ -83,43 +84,49 @@ public class EventFlowGraphTransformation{
 		
 		// Remove nodes tagged with "CFG_MASTER_ENTRY_NODE"
 		// Remove edges tagged with "CFG_ENTRY_EDGE"
-		AtlasSet<GraphElement> rootCFGNodes = g.nodes().taggedWithAll(XCSG.controlFlowRoot);
+		AtlasSet<Node> rootCFGNodes = g.nodes().taggedWithAll(XCSG.controlFlowRoot);
 		Q masterEntryGraph = cfgEdges.reverseStep(Common.toQ(rootCFGNodes));
 		Q masterEntryNodes = masterEntryGraph.nodesTaggedWithAll(ControlFlowGraph.CFG_MASTER_ENTRY_NODE);
 		Q masterEntryEdges = masterEntryGraph.edgesTaggedWithAll(ControlFlowGraph.CFG_ENTRY_EDGE);
-		this.deleteElementsFromIndex(masterEntryEdges.eval().edges());
-		this.deleteElementsFromIndex(masterEntryNodes.eval().nodes());
+		this.deleteEdgesFromIndex(masterEntryEdges.eval().edges());
+		this.deleteNodesFromIndex(masterEntryNodes.eval().nodes());
 		
 		// Remove nodes tagged with "CFG_MASTER_EXIT_NODE"
 		// Remove edges tagged with "CFG_EXIT_EDGE"
-		AtlasSet<GraphElement> exitCFGNodes = g.nodes().taggedWithAll(XCSG.controlFlowExitPoint);
+		AtlasSet<Node> exitCFGNodes = g.nodes().taggedWithAll(XCSG.controlFlowExitPoint);
 		Q masterExitGraph = cfgEdges.forwardStep(Common.toQ(exitCFGNodes));
 		Q masterExitNodes = masterExitGraph.nodesTaggedWithAll(ControlFlowGraph.CFG_MASTER_EXIT_NODE);
 		Q masterExitEdges = masterExitGraph.edgesTaggedWithAll(ControlFlowGraph.CFG_EXIT_EDGE);
-		this.deleteElementsFromIndex(masterExitEdges.eval().edges());
-		this.deleteElementsFromIndex(masterExitNodes.eval().nodes());
+		this.deleteEdgesFromIndex(masterExitEdges.eval().edges());
+		this.deleteNodesFromIndex(masterExitNodes.eval().nodes());
 		
-		AtlasSet<GraphElement> efgNodes = g.nodes().taggedWithAll(EventFlowGraphTransformation.EFG_NODE);
+		AtlasSet<Node> efgNodes = g.nodes().taggedWithAll(EventFlowGraphTransformation.EFG_NODE);
 		Q efgGraph = universe().edgesTaggedWithAll(EventFlowGraphTransformation.EFG_EDGE).forward(Common.toQ(efgNodes)); 		
 		
 		// Remove edges tagged with "NEW_EFG_EDGE"
-		AtlasSet<GraphElement> newEFGEdges = efgGraph.edgesTaggedWithAny(EventFlowGraphTransformation.NEW_EFG_EDGE).eval().edges();
-		this.deleteElementsFromIndex(newEFGEdges);
+		AtlasSet<Edge> newEFGEdges = efgGraph.edgesTaggedWithAny(EventFlowGraphTransformation.NEW_EFG_EDGE).eval().edges();
+		this.deleteEdgesFromIndex(newEFGEdges);
 		
 		// Remove tag "EFG_EDGE" from all edges
-		AtlasSet<GraphElement> efgEdges = efgGraph.edgesTaggedWithAll(EventFlowGraphTransformation.EFG_EDGE).eval().edges();
-		for(GraphElement edge : efgEdges){
+		AtlasSet<Edge> efgEdges = efgGraph.edgesTaggedWithAll(EventFlowGraphTransformation.EFG_EDGE).eval().edges();
+		for(Edge edge : efgEdges){
 			edge.untag(EventFlowGraphTransformation.EFG_EDGE);
 		}
 		
 		// Remove tag "EFG_NODE" from all nodes
-		for(GraphElement node : efgNodes){
+		for(Node node : efgNodes){
 			node.untag(EventFlowGraphTransformation.EFG_NODE);
 		}
 	}
 	
-	private void deleteElementsFromIndex(AtlasSet<GraphElement> elements){
-		for(GraphElement element : elements){
+	private void deleteNodesFromIndex(AtlasSet<Node> elements){
+		for(Node element : elements){
+			Graph.U.delete(element);
+		}
+	}
+	
+	private void deleteEdgesFromIndex(AtlasSet<Edge> elements){
+		for(Edge element : elements){
 			Graph.U.delete(element);
 		}
 	}
@@ -129,9 +136,9 @@ public class EventFlowGraphTransformation{
 	 * @param node
 	 * @return
 	 */
-	private AtlasSet<GraphElement> getInEdges(GraphElement node){
-		AtlasSet<GraphElement> inEdges = new AtlasHashSet<GraphElement>();
-		for(GraphElement edge : edges){
+	private AtlasSet<Edge> getInEdges(Node node){
+		AtlasSet<Edge> inEdges = new AtlasHashSet<Edge>();
+		for(Edge edge : edges){
 			if(edge.getNode(EdgeDirection.TO).equals(node)){
 				inEdges.add(edge);
 			}
@@ -144,9 +151,9 @@ public class EventFlowGraphTransformation{
 	 * @param node
 	 * @return
 	 */
-	private AtlasSet<GraphElement> getOutEdges(GraphElement node){
-		AtlasSet<GraphElement> outEdges = new AtlasHashSet<GraphElement>();
-		for(GraphElement edge : edges){
+	private AtlasSet<Edge> getOutEdges(Node node){
+		AtlasSet<Edge> outEdges = new AtlasHashSet<Edge>();
+		for(Edge edge : edges){
 			if(edge.getNode(EdgeDirection.FROM).equals(node)){
 				outEdges.add(edge);
 			}
@@ -159,14 +166,14 @@ public class EventFlowGraphTransformation{
 	 * @return
 	 */
 	public Q constructEFG(){
-		AtlasSet<GraphElement> nodesToRetain = this.performDominanceAnalysis(true);
-		for(GraphElement node : nodesToRetain){
+		AtlasSet<Node> nodesToRetain = this.performDominanceAnalysis(true);
+		for(Node node : nodesToRetain){
 			node.tag(EFG_NODE);
 		}
 
 		// Retain a stack of node that are consumed to be removed from the graph after the loop
-		AtlasSet<GraphElement> toRemoveNodes = new AtlasHashSet<GraphElement>();
-		for(GraphElement node : this.nodes){
+		AtlasSet<Node> toRemoveNodes = new AtlasHashSet<Node>();
+		for(Node node : this.nodes){
 			if(nodesToRetain.contains(node)){
 				this.retainNode(node);
 			}else{
@@ -177,21 +184,21 @@ public class EventFlowGraphTransformation{
 		}
 		
 		// Remove the consumed nodes in the previous loop
-		for(GraphElement node : toRemoveNodes){
+		for(Node node : toRemoveNodes){
 			this.nodes.remove(node);
 		}
 		
-		for(GraphElement node : this.nodes.taggedWithAll(EFG_NODE)){
+		for(Node node : this.nodes.taggedWithAll(EFG_NODE)){
 			this.removeDoubleEdges(node);
 		}
 		
-		AtlasSet<GraphElement> ns = new AtlasHashSet<GraphElement>();
+		AtlasSet<Node> ns = new AtlasHashSet<Node>();
 		ns.addAll(this.nodes.taggedWithAll(EFG_NODE));
 		
 		
 		// assert: edges only refer to nodes which are tagged EFG_NODE 
-		AtlasSet<GraphElement> es = new AtlasHashSet<GraphElement>();
-		for (GraphElement edge : this.edges) {
+		AtlasSet<Node> es = new AtlasHashSet<Node>();
+		for (Edge edge : this.edges) {
 			if (ns.contains(edge.getNode(EdgeDirection.FROM))
 				&& ns.contains(edge.getNode(EdgeDirection.TO)) ) {
 				es.add(edge);
@@ -203,52 +210,52 @@ public class EventFlowGraphTransformation{
 		return efg;
 	}
 	
-	private void retainNode(GraphElement node){
-		AtlasSet<GraphElement> inEdges = this.getInEdges(node);
-		for(GraphElement inEdge : inEdges){
-			GraphElement predecessor = inEdge.getNode(EdgeDirection.FROM);
+	private void retainNode(Node node){
+		AtlasSet<Edge> inEdges = this.getInEdges(node);
+		for(Edge inEdge : inEdges){
+			Node predecessor = inEdge.getNode(EdgeDirection.FROM);
 			if(predecessor.taggedWith(EFG_NODE)){
 				inEdge.tag(EFG_EDGE);
 			}
 		}
 		
-		AtlasSet<GraphElement> outEdges = this.getOutEdges(node);
-		for(GraphElement outEdge : outEdges){
-			GraphElement successor = outEdge.getNode(EdgeDirection.TO);
+		AtlasSet<Edge> outEdges = this.getOutEdges(node);
+		for(Edge outEdge : outEdges){
+			Node successor = outEdge.getNode(EdgeDirection.TO);
 			if(successor.taggedWith(EFG_NODE)){
 				outEdge.tag(EFG_EDGE);
 			}
 		}
 	}
 	
-	private void consumeNode(GraphElement node){
+	private void consumeNode(Node node){
 		// This function will consume the given node by bypassing it through connecting its predecessors with successors
 		// while preserving edges contents especially for branches.
 		
 		// First: get the predecessors for the node
-		AtlasSet<GraphElement> inEdges = this.getInEdges(node);
-		HashMap<GraphElement, GraphElement> predecessorEdgeMap = new HashMap<GraphElement, GraphElement>(); 
-		for(GraphElement inEdge : inEdges){
-			GraphElement predecessor = inEdge.getNode(EdgeDirection.FROM);
+		AtlasSet<Edge> inEdges = this.getInEdges(node);
+		HashMap<Node, Edge> predecessorEdgeMap = new HashMap<Node, Edge>(); 
+		for(Edge inEdge : inEdges){
+			Node predecessor = inEdge.getNode(EdgeDirection.FROM);
 			predecessorEdgeMap.put(predecessor, inEdge);
 		}
 		// Remove the case where the node has a self-loop. This will cause infinite recursion
 		predecessorEdgeMap.keySet().remove(node);
 		
 		// Second: get the successors for the node
-		AtlasSet<GraphElement> outEdges = this.getOutEdges(node);
-		AtlasSet<GraphElement> successors = new AtlasHashSet<GraphElement>();
-		for(GraphElement outEdge : outEdges){
-			GraphElement successor = outEdge.getNode(EdgeDirection.TO);
+		AtlasSet<Edge> outEdges = this.getOutEdges(node);
+		AtlasSet<Node> successors = new AtlasHashSet<Node>();
+		for(Edge outEdge : outEdges){
+			Node successor = outEdge.getNode(EdgeDirection.TO);
 			successors.add(successor);
 		}
 		// Remove the case where the node has a self-loop. This will cause infinite recursion
 		successors.remove(node);
 		
-		for(GraphElement predecessor : predecessorEdgeMap.keySet()){
-			for(GraphElement successor : successors){
-				GraphElement newEdge = Graph.U.createEdge(predecessor, successor);
-				GraphElement oldEdge = predecessorEdgeMap.get(predecessor);
+		for(Node predecessor : predecessorEdgeMap.keySet()){
+			for(Node successor : successors){
+				Edge newEdge = Graph.U.createEdge(predecessor, successor);
+				Edge oldEdge = predecessorEdgeMap.get(predecessor);
 				newEdge.putAllAttr(oldEdge.attr());
 				for(String tag : oldEdge.tags()){
 					newEdge.tag(tag);
@@ -261,21 +268,21 @@ public class EventFlowGraphTransformation{
 		}
 		
 		// Remove original inEdges for the node
-		for(GraphElement inEdge : inEdges){
+		for(Edge inEdge : inEdges){
 			this.edges.remove(inEdge);
 		}
 		
 		// Remove original outEdges for the node
-		for(GraphElement outEdge : outEdges){
+		for(Edge outEdge : outEdges){
 			this.edges.remove(outEdge);
 		}
 	}
 	
-	private void removeDoubleEdges(GraphElement node){
-		AtlasSet<GraphElement> outEdges = this.getOutEdges(node);
-		AtlasSet<GraphElement> successors = new AtlasHashSet<GraphElement>();
-		for(GraphElement outEdge : outEdges){
-			GraphElement successor = outEdge.getNode(EdgeDirection.TO);
+	private void removeDoubleEdges(Node node){
+		AtlasSet<Edge> outEdges = this.getOutEdges(node);
+		AtlasSet<Node> successors = new AtlasHashSet<Node>();
+		for(Edge outEdge : outEdges){
+			Node successor = outEdge.getNode(EdgeDirection.TO);
 			if(successors.contains(successor)){
 				this.edges.remove(outEdge);
 			}else{
@@ -284,17 +291,17 @@ public class EventFlowGraphTransformation{
 		}
 	}
 	
-	private AtlasSet<GraphElement> performDominanceAnalysis(boolean postDominance){
+	private AtlasSet<Node> performDominanceAnalysis(boolean postDominance){
 		DominanceAnalysis domTree = new DominanceAnalysis(this.cfg, postDominance);
-		Multimap<GraphElement> domFront = domTree.getDominanceFrontiers();
+		Multimap<Node> domFront = domTree.getDominanceFrontiers();
 		
-		AtlasSet<GraphElement> elements = new AtlasHashSet<GraphElement>(this.eventNodes);
-		AtlasSet<GraphElement> newElements = null;
+		AtlasSet<Node> elements = new AtlasHashSet<Node>(this.eventNodes);
+		AtlasSet<Node> newElements = null;
 		long preSize = 0;
 		do{
 			preSize = elements.size();
-			newElements = new AtlasHashSet<GraphElement>();
-			for(GraphElement element : elements){
+			newElements = new AtlasHashSet<Node>();
+			for(Node element : elements){
 				newElements.addAll(domFront.get(element));
 			}
 			elements.addAll(newElements);
@@ -309,14 +316,14 @@ public class EventFlowGraphTransformation{
 	 */
 	public static void undoAllEFGTransformations(){
 		// Remove tag "EFG_EDGE" from all edges
-		AtlasSet<GraphElement> edges = universe().edgesTaggedWithAll(EventFlowGraphTransformation.EFG_EDGE).eval().edges();
-		for(GraphElement edge : edges){
+		AtlasSet<Edge> edges = universe().edgesTaggedWithAll(EventFlowGraphTransformation.EFG_EDGE).eval().edges();
+		for(Edge edge : edges){
 			edge.untag(EventFlowGraphTransformation.EFG_EDGE);
 		}
 		
 		// Remove tag "EFG_NODE" from all nodes
-		AtlasSet<GraphElement> nodes = universe().nodesTaggedWithAll(EventFlowGraphTransformation.EFG_NODE).eval().nodes();
-		for(GraphElement node : nodes){
+		AtlasSet<Node> nodes = universe().nodesTaggedWithAll(EventFlowGraphTransformation.EFG_NODE).eval().nodes();
+		for(Node node : nodes){
 			node.untag(EventFlowGraphTransformation.EFG_NODE);
 		}
 		
@@ -324,24 +331,24 @@ public class EventFlowGraphTransformation{
 		// Remove edges tagged with "CFG_EXIT_EDGE"
 		// Remove edges tagged with "NEW_EFG_EDGE"
 		edges = universe().edgesTaggedWithAny(ControlFlowGraph.CFG_ENTRY_EDGE, ControlFlowGraph.CFG_EXIT_EDGE, EventFlowGraphTransformation.NEW_EFG_EDGE).eval().edges();
-		HashSet<GraphElement> toDelete = new HashSet<GraphElement>(); 
-		for(GraphElement edge : edges){
-			toDelete.add(edge);
+		HashSet<Edge> toDeleteEdges = new HashSet<Edge>(); 
+		for(Edge edge : edges){
+			toDeleteEdges.add(edge);
 		}
 		
-		for(GraphElement edge : toDelete){
+		for(Edge edge : toDeleteEdges){
 			Graph.U.delete(edge);
 		}
 		
 		// Remove nodes tagged with "CFG_MASTER_ENTRY_NODE"
 		// Remove nodes tagged with "CFG_MASTER_EXIT_NODE"
 		nodes = universe().nodesTaggedWithAny(ControlFlowGraph.CFG_MASTER_ENTRY_NODE, ControlFlowGraph.CFG_MASTER_EXIT_NODE).eval().nodes();
-		toDelete = new HashSet<GraphElement>();
-		for(GraphElement node : nodes){
-			toDelete.add(node);
+		HashSet<Node> toDeleteNodes = new HashSet<Node>();
+		for(Node node : nodes){
+			toDeleteNodes.add(node);
 		}
 		
-		for(GraphElement node : toDelete){
+		for(Node node : toDeleteNodes){
 			Graph.U.delete(node);
 		}
 	}

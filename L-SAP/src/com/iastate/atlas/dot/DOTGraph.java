@@ -13,7 +13,6 @@ import com.alexmerz.graphviz.objects.Id;
 import com.alexmerz.graphviz.objects.Node;
 import com.alexmerz.graphviz.objects.PortNode;
 import com.ensoftcorp.atlas.core.db.graph.Address;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
 import com.ensoftcorp.atlas.core.db.graph.GraphElement.EdgeDirection;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
@@ -24,7 +23,7 @@ public class DOTGraph {
 	private Graph graph;
 	private int counter = 0;
 	
-	public DOTGraph(AtlasSet<GraphElement> nodes, AtlasSet<GraphElement> edges, H h) {
+	public DOTGraph(AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> nodes, AtlasSet<com.ensoftcorp.atlas.core.db.graph.Edge> edges, H h) {
 		this.setGraph(this.createEmptyDotGraph());
 		this.dotify(nodes, edges, h);
 	}
@@ -42,9 +41,9 @@ public class DOTGraph {
 		return p.getGraphs().get(0);
 	}
 	
-	private void dotify(AtlasSet<GraphElement> nodes, AtlasSet<GraphElement> edges, H h){
-		HashMap<GraphElement, Node> nodesMap = new HashMap<GraphElement, Node>();
-		for(GraphElement atlasNode : nodes){
+	private void dotify(AtlasSet<com.ensoftcorp.atlas.core.db.graph.Node> nodes, AtlasSet<com.ensoftcorp.atlas.core.db.graph.Edge> edges, H h){
+		HashMap<com.ensoftcorp.atlas.core.db.graph.Node, Node> nodesMap = new HashMap<com.ensoftcorp.atlas.core.db.graph.Node, Node>();
+		for(com.ensoftcorp.atlas.core.db.graph.Node atlasNode : nodes){
 			String nodeLabel = atlasNode.getAttr(XCSG.name).toString();
 			Address nodeAddress = atlasNode.address();
 			Color nodeColor = null;
@@ -56,9 +55,9 @@ public class DOTGraph {
 			nodesMap.put(atlasNode, newNode);
 		}
 		
-		for(GraphElement edge : edges){
-			GraphElement fromNode = edge.getNode(EdgeDirection.FROM);
-			GraphElement toNode = edge.getNode(EdgeDirection.TO);
+		for(com.ensoftcorp.atlas.core.db.graph.Edge edge : edges){
+			com.ensoftcorp.atlas.core.db.graph.Node fromNode = edge.getNode(EdgeDirection.FROM);
+			com.ensoftcorp.atlas.core.db.graph.Node toNode = edge.getNode(EdgeDirection.TO);
 			
 			Node newFromNode = nodesMap.get(fromNode);
 			Node newToNode = nodesMap.get(toNode);

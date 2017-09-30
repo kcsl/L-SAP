@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 
 /**
@@ -19,7 +19,7 @@ import com.ensoftcorp.atlas.core.db.set.AtlasSet;
  * <a href="http://en.wikipedia.org/wiki/Dominator_%28graph_theory%29">dominator tree</a>
  * of a {@link ControlFlowGraph cfg}.
  */
-public class DominanceAnalysis{
+public class DominanceAnalysis {
 	/**
 	 * Control flow graph for dominance computation
 	 */
@@ -33,62 +33,62 @@ public class DominanceAnalysis{
     /**
      * Semidominator numbers by block.
      */
-    private Map<GraphElement, Integer> semi = new HashMap<GraphElement, Integer>();
+    private Map<Node, Integer> semi = new HashMap<Node, Integer>();
 
     /**
      * Parents by block.
      */
-    private Map<GraphElement, GraphElement> parent = new HashMap<GraphElement, GraphElement>();
+    private Map<Node, Node> parent = new HashMap<Node, Node>();
 
     /**
      * Predecessors by block.
      */
-    private Multimap<GraphElement> pred = new Multimap<GraphElement>();
+    private Multimap<Node> pred = new Multimap<Node>();
 
     /**
      * Blocks in DFS order; used to look up a block from its semidominator
      * numbering.
      */
-    private ArrayList<GraphElement> vertex = new ArrayList<GraphElement>();
+    private ArrayList<Node> vertex = new ArrayList<Node>();
 
     /**
      * Blocks by semidominator block.
      */
-    private Multimap<GraphElement> bucket = new Multimap<GraphElement>();
+    private Multimap<Node> bucket = new Multimap<Node>();
 
     /**
      * idominator map, built iteratively.
      */
-    private Map<GraphElement, GraphElement> idom = new HashMap<GraphElement, GraphElement>();
+    private Map<Node, Node> idom = new HashMap<Node, Node>();
 
     /**
      *  Dominance frontiers of this dominator tree, built on demand.
      */
-    private Multimap<GraphElement> dominanceFrontiers = null;
+    private Multimap<Node> dominanceFrontiers = null;
 
     /**
      *  Dominator tree, built on demand from the idominator map.
      */
-    private Multimap<GraphElement> dominatorTree = null;
+    private Multimap<Node> dominatorTree = null;
 
     /**
      * Auxiliary data structure used by the O(m log n) eval/link implementation:
      * ancestor relationships in the forest (the processed tree as it's built
      * back up).
      */
-    private Map<GraphElement, GraphElement> ancestor = new HashMap<GraphElement, GraphElement>();
+    private Map<Node, Node> ancestor = new HashMap<Node, Node>();
 
     /**
      * Auxiliary data structure used by the O(m log n) eval/link implementation:
      * node with least semidominator seen during traversal of a path from node
      * to subtree root in the forest.
      */
-    private Map<GraphElement, GraphElement> label = new HashMap<GraphElement, GraphElement>();
+    private Map<Node, Node> label = new HashMap<Node, Node>();
 
     /**
      *  A topological traversal of the dominator tree, built on demand.
      */
-    private LinkedList<GraphElement> topologicalTraversalImpl = null;
+    private LinkedList<Node> topologicalTraversalImpl = null;
 	
 	
     /**
@@ -111,7 +111,7 @@ public class DominanceAnalysis{
      * @return the map from each block to its immediate dominator
      * (if it has one).
      */
-    public Map<GraphElement, GraphElement> getIdoms(){
+    public Map<Node, Node> getIdoms(){
         return this.idom;
     }
 
@@ -119,11 +119,11 @@ public class DominanceAnalysis{
      * Compute and/or fetch the dominator tree as a Multimap.
      * @return the dominator tree.
      */
-    public Multimap<GraphElement> getDominatorTree(){
+    public Multimap<Node> getDominatorTree(){
         if (this.dominatorTree == null){
-             this.dominatorTree = new Multimap<GraphElement>();
+             this.dominatorTree = new Multimap<Node>();
 
-             for (GraphElement node: this.idom.keySet())
+             for (Node node: this.idom.keySet())
                  dominatorTree.get(this.idom.get(node)).add(node);
         }
         return this.dominatorTree;
@@ -135,23 +135,23 @@ public class DominanceAnalysis{
      *  @return a Multimap where the set of nodes mapped to each key
      *    node is the set of nodes in the key node's dominance frontier.
      */
-    public Multimap<GraphElement> getDominanceFrontiers(){
+    public Multimap<Node> getDominanceFrontiers(){
         if (this.dominanceFrontiers == null){
-            this.dominanceFrontiers = new Multimap<GraphElement>();
+            this.dominanceFrontiers = new Multimap<Node>();
 
             getDominatorTree(); // touch the dominator tree
 
-            for (GraphElement x: reverseTopologicalTraversal()){
-                Set<GraphElement> dfx = this.dominanceFrontiers.get(x);
+            for (Node x: reverseTopologicalTraversal()){
+                Set<Node> dfx = this.dominanceFrontiers.get(x);
 
                 //  Compute DF(local)
-                for (GraphElement y: getSuccessors(x))
+                for (Node y: getSuccessors(x))
                     if ( idom.get(y) != x )
                        dfx.add(y);
 
                 //  Compute DF(up)
-                for (GraphElement z : this.dominatorTree.get(x) )
-                    for (GraphElement y: this.dominanceFrontiers.get(z) )
+                for (Node z : this.dominatorTree.get(x) )
+                    for (Node y: this.dominanceFrontiers.get(z) )
                         if ( idom.get(y) != x )
                            dfx.add(y);
             }
@@ -167,7 +167,7 @@ public class DominanceAnalysis{
      * @return the topological traversal of the dominator tree,
      * as an immutable List.
      */
-    public List<GraphElement> topologicalTraversal()
+    public List<Node> topologicalTraversal()
     {
         return Collections.unmodifiableList(getToplogicalTraversalImplementation());
     }
@@ -178,12 +178,12 @@ public class DominanceAnalysis{
      * @return a reverse topological traversal of the dominator tree,
      * as an immutable List.
      */
-    public Iterable<GraphElement> reverseTopologicalTraversal()
+    public Iterable<Node> reverseTopologicalTraversal()
     {
-        return new Iterable<GraphElement>()
+        return new Iterable<Node>()
         {
             @Override
-            public Iterator<GraphElement> iterator()
+            public Iterator<Node> iterator()
             {
                 return getToplogicalTraversalImplementation().descendingIterator();
             }
@@ -196,12 +196,12 @@ public class DominanceAnalysis{
      * @param roots the root(s) of the flowgraph.  One of these is
      * the start block, the others are exception handlers.
      */
-    private void dfs(GraphElement entryNode)
+    private void dfs(Node entryNode)
     {
-        Iterator<GraphElement> it = new DepthFirstPreorderIterator(this.cfg, entryNode, this.postdom);
+        Iterator<Node> it = new DepthFirstPreorderIterator(this.cfg, entryNode, this.postdom);
 
         while ( it.hasNext() ){
-        	GraphElement node = it.next();
+        	Node node = it.next();
 
             if ( !semi.containsKey(node) )
             {
@@ -211,7 +211,7 @@ public class DominanceAnalysis{
                 semi.put(node, semi.size());
                 label.put(node, node);
 
-                for (GraphElement child : getSuccessors(node))
+                for (Node child : getSuccessors(node))
                 {
                     pred.get(child).add(node);
                     if (!semi.containsKey(child))
@@ -232,13 +232,13 @@ public class DominanceAnalysis{
 
         for (int i = lastSemiNumber; i > 0; i--)
         {
-        	GraphElement w = vertex.get(i);
-        	GraphElement p = this.parent.get(w);
+        	Node w = vertex.get(i);
+        	Node p = this.parent.get(w);
 
             //  step 2: compute semidominators
             //  for each v in pred(w)...
             int semidominator = semi.get(w);
-            for (GraphElement v : pred.get(w))
+            for (Node v : pred.get(w))
                 semidominator = Math.min(semidominator, semi.get(eval(v)));
 
             semi.put(w, semidominator);
@@ -249,9 +249,9 @@ public class DominanceAnalysis{
 
             //  step 3: implicitly compute idominators
             //  for each v in bucket(parent(w)) ...
-            for (GraphElement v : bucket.get(p))
+            for (Node v : bucket.get(p))
             {
-            	GraphElement u = eval(v);
+            	Node u = eval(v);
 
                 if (semi.get(u) < semi.get(v))
                     idom.put(v, u);
@@ -265,7 +265,7 @@ public class DominanceAnalysis{
         // step 4: explicitly compute idominators
         for (int i = 1; i <= lastSemiNumber; i++)
         {
-        	GraphElement w = vertex.get(i);
+        	Node w = vertex.get(i);
 
             if (idom.get(w) != vertex.get((semi.get(w))))
                 idom.put(w, idom.get(idom.get(w)));
@@ -281,7 +281,7 @@ public class DominanceAnalysis{
      * let r be the root of the tree which contains v. Return any vertex u != r
      * of miniumum semi(u) on the path r-*v."
      */
-    private GraphElement eval(GraphElement v)
+    private Node eval(Node v)
     {
         //  This version of Lengauer-Tarjan implements
         //  eval(v) as a path-compression procedure.
@@ -293,12 +293,12 @@ public class DominanceAnalysis{
      * Traverse ancestor pointers back to a subtree root, then propagate the
      * least semidominator seen along this path through the "label" map.
      */
-    private void compress(GraphElement v)
+    private void compress(Node v)
     {
-        Stack<GraphElement> worklist = new Stack<GraphElement>();
+        Stack<Node> worklist = new Stack<Node>();
         worklist.add(v);
 
-        GraphElement a = this.ancestor.get(v);
+        Node a = this.ancestor.get(v);
 
         //  Traverse back to the subtree root.
         while ( this.ancestor.containsKey(a) )
@@ -308,12 +308,12 @@ public class DominanceAnalysis{
         }
 
         //  Propagate semidominator information forward.
-        GraphElement ancestor = worklist.pop();
+        Node ancestor = worklist.pop();
         int leastSemi = semi.get(label.get(ancestor));
 
         while ( !worklist.empty() )
         {
-        	GraphElement descendent = worklist.pop();
+        	Node descendent = worklist.pop();
             int currentSemi = semi.get(label.get(descendent));
 
             if ( currentSemi > leastSemi)
@@ -331,7 +331,7 @@ public class DominanceAnalysis{
      * parent's forest, with no attempt to balance the subtrees or otherwise
      * optimize searching.
      */
-    private void link(GraphElement parent, GraphElement child)
+    private void link(Node parent, Node child)
     {
         this.ancestor.put(child, parent);
     }
@@ -365,13 +365,13 @@ public class DominanceAnalysis{
      *    the dominator tree such that for any node n with a dominator,
      *    n appears before idom(n).
      */
-    private LinkedList<GraphElement> getToplogicalTraversalImplementation()
+    private LinkedList<Node> getToplogicalTraversalImplementation()
     {
         if ( this.topologicalTraversalImpl == null)
         {
-            this.topologicalTraversalImpl = new LinkedList<GraphElement>();
+            this.topologicalTraversalImpl = new LinkedList<Node>();
 
-            for (GraphElement node: this.vertex)
+            for (Node node: this.vertex)
             {
                 int idx = this.topologicalTraversalImpl.indexOf(this.idom.get(node));
 
@@ -385,7 +385,7 @@ public class DominanceAnalysis{
         return this.topologicalTraversalImpl;
     }
     
-    private AtlasSet<GraphElement> getSuccessors(GraphElement node) {
+    private AtlasSet<Node> getSuccessors(Node node) {
         if (postdom) {
             return this.cfg.getPredecessors(node);
         } else {

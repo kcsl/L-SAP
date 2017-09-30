@@ -6,7 +6,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.iastate.atlas.scripts.FeasibilityChecker;
@@ -14,22 +15,22 @@ import com.iastate.atlas.scripts.Queries;
 
 public class MatchingPair {
 
-	private GraphElement firstEvent; // The first event is always a LOCKing event
-	private GraphElement secondEvent;
-	private List<GraphElement> path;
-	private HashSet<GraphElement> excludedNodes;
+	private Node firstEvent; // The first event is always a LOCKing event
+	private Node secondEvent;
+	private List<Node> path;
+	private HashSet<Node> excludedNodes;
 	private VerificationResult result;
 	
 	 public enum VerificationResult{
 		 SAFE, DOUBLE_LOCK, DANGLING_LOCK, NOT_VALID
 	 }
 
-	public MatchingPair(GraphElement e1, GraphElement e2, List<GraphElement> path) {
+	public MatchingPair(Node e1, Node e2, List<Node> path) {
 		this.result = null;
 		this.setFirstEvent(e1);
 		this.setSecondEvent(e2);
 		//TODO: Report actual path
-		this.path = new ArrayList<GraphElement>();
+		this.path = new ArrayList<Node>();
 		this.path.add(this.getFirstEvent());
 		this.path.add(this.getSecondEvent());
 	}
@@ -42,14 +43,14 @@ public class MatchingPair {
 	 * @param summaries
 	 * @return
 	 */
-	public void verify(AtlasSet<GraphElement> e1Events, AtlasSet<GraphElement> e2Events, HashMap<GraphElement, Boolean> mayEventsFeasibility, HashMap<GraphElement, FunctionSummary> summaries){
+	public void verify(AtlasSet<Node> e1Events, AtlasSet<Node> e2Events, HashMap<Node, Boolean> mayEventsFeasibility, HashMap<Node, FunctionSummary> summaries){
 		if(this.excludedNodes == null){
-			this.excludedNodes = new HashSet<GraphElement>();
-			for(GraphElement node : e1Events){
+			this.excludedNodes = new HashSet<Node>();
+			for(Node node : e1Events){
 				excludedNodes.add(node);
 			}
 			
-			for(GraphElement node : e2Events){
+			for(Node node : e2Events){
 				excludedNodes.add(node);
 			}
 		}
@@ -58,17 +59,17 @@ public class MatchingPair {
 		if(Verifier.FEASIBILITY_ENABLED){
 			if(mayEventsFeasibility.containsKey(this.getFirstEvent())){
 				boolean lockOnTrueBranch = mayEventsFeasibility.get(this.getFirstEvent());
-				GraphElement containingFunction = this.getContainingFunction(this.getFirstEvent(), summaries);
+				Node containingFunction = this.getContainingFunction(this.getFirstEvent(), summaries);
 				FunctionSummary s = summaries.get(containingFunction);
-				ArrayList<GraphElement> p = this.getPathContainingNode(s.getFeasibilityChecker(), summaries);
+				ArrayList<Node> p = this.getPathContainingNode(s.getFeasibilityChecker(), summaries);
 				if(p == null || p.isEmpty()){
 					this.setResult(VerificationResult.DOUBLE_LOCK);
 					return;					
 				}
 				
-				GraphElement nextElement = p.get(p.indexOf(this.getFirstEvent()) + 1);
+				Node nextElement = p.get(p.indexOf(this.getFirstEvent()) + 1);
 				
-				GraphElement edge = Utils.findEdge(s.getFeasibilityChecker().getFunctionCFG(), this.getFirstEvent(), nextElement);
+				Edge edge = Utils.findEdge(s.getFeasibilityChecker().getFunctionCFG(), this.getFirstEvent(), nextElement);
 				String conditionValue = edge.attr().get(XCSG.conditionValue).toString().toLowerCase();
 				//Utils.debug(0, "$$$$$$$$$$$$$$:\t" + node.attr().get(XCSG.name) + "\t" +  conditionValue + "\t" + lockOnTrueBranch);
 				if(conditionValue.equals("true") && !lockOnTrueBranch){
@@ -108,9 +109,9 @@ public class MatchingPair {
 		}
 	}
 	
-	private boolean checkPathFeasibility(HashMap<GraphElement, FunctionSummary> summaries){
-		GraphElement functionForE1 = this.getContainingFunction(this.getFirstEvent(), summaries);
-		GraphElement functionForE2 = this.getContainingFunction(this.getSecondEvent(), summaries);
+	private boolean checkPathFeasibility(HashMap<Node, FunctionSummary> summaries){
+		Node functionForE1 = this.getContainingFunction(this.getFirstEvent(), summaries);
+		Node functionForE2 = this.getContainingFunction(this.getSecondEvent(), summaries);
 		if(functionForE1.equals(functionForE2)){
 			// The two events are in the same function
 			FunctionSummary summary = summaries.get(functionForE1);
@@ -137,29 +138,29 @@ public class MatchingPair {
 		}
 	}
 	
-	private GraphElement [] getEventsWithRespectToFirstEvent(HashMap<GraphElement, FunctionSummary> summaries){
-		GraphElement functionForE1 = this.getContainingFunction(this.getFirstEvent(), summaries);
-		GraphElement functionForE2 = this.getContainingFunction(this.getSecondEvent(), summaries);
+	private Node[] getEventsWithRespectToFirstEvent(HashMap<Node, FunctionSummary> summaries){
+		Node functionForE1 = this.getContainingFunction(this.getFirstEvent(), summaries);
+		Node functionForE2 = this.getContainingFunction(this.getSecondEvent(), summaries);
 		if(functionForE1.equals(functionForE2)){
 			// The two events are in the same function
 			if(this.getSecondEvent().attr().get(XCSG.name).equals(Queries.EVENT_FLOW_EXIT_NODE)){
-				return new GraphElement [] {this.getFirstEvent(), null};
+				return new Node[] {this.getFirstEvent(), null};
 			}
-			return new GraphElement [] {this.getFirstEvent(), this.getSecondEvent()};
+			return new Node[] {this.getFirstEvent(), this.getSecondEvent()};
 		}
 		// Two events are in different functions
-		return new GraphElement [] {this.getFirstEvent(), null};
+		return new Node[] {this.getFirstEvent(), null};
 	}
 	
-	private GraphElement getContainingFunction(GraphElement node, HashMap<GraphElement, FunctionSummary> summaries){
-		for(GraphElement function : summaries.keySet()){
+	private Node getContainingFunction(Node node, HashMap<Node, FunctionSummary> summaries){
+		for(Node function : summaries.keySet()){
 			if(summaries.get(function).getFlowGraph().nodes().contains(node))
 				return function;
 		}
 		return null;
 	}
 	
-	public void setPath(List<GraphElement> path) {
+	public void setPath(List<Node> path) {
 		this.path = path;
 	}
 	
@@ -174,19 +175,19 @@ public class MatchingPair {
 		return result;
 	}
 
-	public GraphElement getFirstEvent() {
+	public Node getFirstEvent() {
 		return firstEvent;
 	}
 
-	public void setFirstEvent(GraphElement e1Event) {
+	public void setFirstEvent(Node e1Event) {
 		this.firstEvent = e1Event;
 	}
 
-	public GraphElement getSecondEvent() {
+	public Node getSecondEvent() {
 		return secondEvent;
 	}
 
-	public void setSecondEvent(GraphElement e2Event) {
+	public void setSecondEvent(Node e2Event) {
 		this.secondEvent = e2Event;
 	}
 	
@@ -240,9 +241,9 @@ public class MatchingPair {
 		return "\t\tMatching Pair [" + (this.getResult() == null ? "UNKNOWN" : this.getResult().toString()) + "]:" + Utils.toString(this.getFirstEvent()) + " >>> " + Utils.toString(this.getSecondEvent());
 	}
 	
-	private ArrayList<GraphElement> getPathContainingNode(FeasibilityChecker feasibilityChecker, HashMap<GraphElement, FunctionSummary> summaries) {
-		GraphElement [] nodes = this.getEventsWithRespectToFirstEvent(summaries);
-		ArrayList<ArrayList<GraphElement>> allPaths = feasibilityChecker.getPathsContainingNodes(this.getFirstEvent(), nodes[1], this.excludedNodes);
+	private ArrayList<Node> getPathContainingNode(FeasibilityChecker feasibilityChecker, HashMap<Node, FunctionSummary> summaries) {
+		Node[] nodes = this.getEventsWithRespectToFirstEvent(summaries);
+		ArrayList<ArrayList<Node>> allPaths = feasibilityChecker.getPathsContainingNodes(this.getFirstEvent(), nodes[1], this.excludedNodes);
 		if(allPaths.size() == 1 || !this.getFirstEvent().tags().contains(XCSG.ControlFlowCondition)){
 			return allPaths.get(0);
 		}
@@ -250,9 +251,9 @@ public class MatchingPair {
 			// If its a condition, then we need to get the paths containing the node correctly
 			// For example: if we have a (mutex_trylock) T-> (EXIT Node)
 			//                           (mutex_trylock) F-> (Event Node) -> (Exit Node)
-			HashMap<Integer, ArrayList<GraphElement>> pathIDs = new HashMap<Integer, ArrayList<GraphElement>>();
-			for(ArrayList<GraphElement> returnedPath : allPaths){
-				List<GraphElement> subList = returnedPath.subList(returnedPath.indexOf(this.getFirstEvent()) + 1, returnedPath.size());
+			HashMap<Integer, ArrayList<Node>> pathIDs = new HashMap<Integer, ArrayList<Node>>();
+			for(ArrayList<Node> returnedPath : allPaths){
+				List<Node> subList = returnedPath.subList(returnedPath.indexOf(this.getFirstEvent()) + 1, returnedPath.size());
 				pathIDs.put(subList.size(), returnedPath);
 			}
 			if(!pathIDs.isEmpty()){

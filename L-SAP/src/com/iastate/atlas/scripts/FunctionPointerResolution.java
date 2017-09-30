@@ -4,14 +4,14 @@ import static com.ensoftcorp.atlas.core.script.Common.universe;
 
 import java.awt.Color;
 
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
 import com.ensoftcorp.atlas.core.highlight.Highlighter;
 import com.ensoftcorp.atlas.core.highlight.Highlighter.ConflictStrategy;
 import com.ensoftcorp.atlas.core.query.Q;
+import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.java.core.script.Common;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 
 public class FunctionPointerResolution {
@@ -41,8 +41,8 @@ public class FunctionPointerResolution {
 		h.highlight(containingCFGNodes, Color.GREEN);
 		
 		Q functionsSettingFP = containsEdges.predecessors(containingCFGNodes);
-		AtlasSet<GraphElement> functions = functionsSettingFP.eval().nodes();
-		for(GraphElement f : functions){
+		AtlasSet<Node> functions = functionsSettingFP.eval().nodes();
+		for(Node f : functions){
 			Q f_cfg = Queries.CFG(Common.toQ(f));
 			DisplayUtil.displayGraph(Common.extend(f_cfg, XCSG.Contains).eval(), h, "CFG [" + f.getAttr(XCSG.name).toString() + "]");
 		}
@@ -73,7 +73,7 @@ public class FunctionPointerResolution {
 		h = new Highlighter(ConflictStrategy.COLOR);
 		h.highlight(cfgNodes, Color.RED);
 		functions = functionsInvokingPtr.eval().nodes();
-		for(GraphElement f : functions){
+		for(Node f : functions){
 			Q f_cfg = Queries.CFG(Common.toQ(f));
 			DisplayUtil.displayGraph(Common.extend(f_cfg, XCSG.Contains).eval(), h, "CFG [" + f.getAttr(XCSG.name).toString() + "]");
 		}

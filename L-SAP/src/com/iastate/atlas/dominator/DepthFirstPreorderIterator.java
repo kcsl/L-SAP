@@ -6,13 +6,13 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Stack;
 
-import com.ensoftcorp.atlas.core.db.graph.GraphElement;
+import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 
 /**
  * DepthFirstPreorderIterator yields a depth-first pre-order traversal of a {@link ControlFlowGraph}.
  */
-public class DepthFirstPreorderIterator implements Iterator<GraphElement>{
+public class DepthFirstPreorderIterator implements Iterator<Node>{
     
 	/**
 	 * Control Flow Graph to operate on
@@ -27,7 +27,7 @@ public class DepthFirstPreorderIterator implements Iterator<GraphElement>{
     /**
      * The to-be-visited stack of blocks.
      */
-    private Stack<GraphElement> toDo = new Stack<GraphElement>();
+    private Stack<Node> toDo = new Stack<Node>();
 
     /**
      *  The set of edges already traversed.
@@ -39,7 +39,7 @@ public class DepthFirstPreorderIterator implements Iterator<GraphElement>{
      * @param root: the master entry node for a given control flow graph
      * @param postdom: if true reverse the direction of computing dominance
      */
-    public DepthFirstPreorderIterator(ControlFlowGraph g, GraphElement root, boolean postdom){
+    public DepthFirstPreorderIterator(ControlFlowGraph g, Node root, boolean postdom){
     	this.postdom = postdom;
         this.toDo.add(root);
         this.cfg = g;
@@ -52,11 +52,11 @@ public class DepthFirstPreorderIterator implements Iterator<GraphElement>{
     }
 
     @Override
-    public GraphElement next(){
+    public Node next(){
         if (!hasNext())
             throw new NoSuchElementException();
 
-        GraphElement next = toDo.pop();
+        Node next = toDo.pop();
         pushSuccessors(next);
         return next;
     }
@@ -66,8 +66,8 @@ public class DepthFirstPreorderIterator implements Iterator<GraphElement>{
      * by adding the destination block to the to-do stack.
      * @param b the current block.
      */
-    private void pushSuccessors(GraphElement b){
-        for (GraphElement succ_block : getSuccessors(b))
+    private void pushSuccessors(Node b){
+        for (Node succ_block : getSuccessors(b))
             if (visitedEdges.add(new Edge(b, succ_block)))
                 toDo.push(succ_block);
     }
@@ -83,10 +83,10 @@ public class DepthFirstPreorderIterator implements Iterator<GraphElement>{
      * so it can be used as a key in a hashed collection.
      */
     private static class Edge{
-        private GraphElement from;
-        private GraphElement to;
+        private Node from;
+        private Node to;
 
-        Edge(GraphElement from, GraphElement to)
+        Edge(Node from, Node to)
         {
             this.from = from;
             this.to = to;
@@ -128,7 +128,7 @@ public class DepthFirstPreorderIterator implements Iterator<GraphElement>{
         }
     }
     
-    private AtlasSet<GraphElement> getSuccessors(GraphElement node) {
+    private AtlasSet<Node> getSuccessors(Node node) {
         if (postdom) {
             return this.cfg.getPredecessors(node);
         } else {
