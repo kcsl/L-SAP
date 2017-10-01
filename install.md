@@ -18,7 +18,7 @@ Note that L-SAP requires the [Atlas](http://www.ensoftcorp.com/atlas/) program a
 7. When the installation completes, restart Eclipse.
 
 ## Installing from Source
-If you want to install from source for bleeding edge changes, first grab a copy of the [source](https://github.com/ kcsl/L-SAP) repository. In the Eclipse workspace, import the `com.kcsl.lsap` Eclipse project located in the source repository.  Right click on the project and select `Export`.  Select `Plug-in Development` &gt; `Deployable plug-ins and fragments`.  Select the `Install into host. Repository:` radio box and click `Finish`.  Press `OK` for the notice about unsigned software.  Once Eclipse restarts the plugin will be installed and it is advisable to close or remove the `com.kcsl.lsap` project from the workspace.
+If you want to install from source for bleeding edge changes, first grab a copy of the [source](https://github.com/kcsl/L-SAP) repository. In the Eclipse workspace, import the `com.kcsl.lsap` Eclipse project located in the source repository.  Right click on the project and select `Export`.  Select `Plug-in Development` &gt; `Deployable plug-ins and fragments`.  Select the `Install into host. Repository:` radio box and click `Finish`.  Press `OK` for the notice about unsigned software.  Once Eclipse restarts the plugin will be installed and it is advisable to close or remove the `com.kcsl.lsap` project from the workspace.
 
 ## Changelog
 Note that except for it's original release, L-SAP version numbers are based off [Atlas](http://www.ensoftcorp.com/atlas/download/) version numbers.
