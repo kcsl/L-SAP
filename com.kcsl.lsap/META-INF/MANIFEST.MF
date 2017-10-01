@@ -1,13 +1,17 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: L-SAP
-Bundle-SymbolicName: com.kcsl.lsap
+Bundle-SymbolicName: com.kcsl.lsap;singleton:=true
 Bundle-Version: 3.1.7.qualifier
 Bundle-Activator: com.kcsl.lsap.Activator
 Bundle-Vendor: KCSL
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  com.ensoftcorp.open.c.commons;bundle-version="3.1.7",
- com.ensoftcorp.open.commons;bundle-version="3.1.7"
+ com.ensoftcorp.open.commons;bundle-version="3.1.7",
+ net.sf.javabdd;bundle-version="1.0.0",
+ org.jgrapht;bundle-version="1.0.1",
+ com.ensoftcorp.atlas.scala-lang;bundle-version="3.1.7",
+ com.ensoftcorp.atlas.ui.shell;bundle-version="3.1.7"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy

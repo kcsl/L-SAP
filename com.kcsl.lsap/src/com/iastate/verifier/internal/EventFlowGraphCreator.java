@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.jgrapht.DirectedGraph;
-import org.jgrapht.alg.StrongConnectivityInspector;
+import org.jgrapht.alg.KosarajuStrongConnectivityInspector;
 import org.jgrapht.graph.DefaultEdge;
 
 import com.alexmerz.graphviz.GraphUtils;
@@ -170,7 +170,7 @@ public class EventFlowGraphCreator {
 		
 		DirectedGraph<String, DefaultEdge> digraph = GraphUtils.convertToJGraphT(graph);
 		
-        StrongConnectivityInspector<String, DefaultEdge> inspector = new StrongConnectivityInspector<String, DefaultEdge>(digraph);
+		KosarajuStrongConnectivityInspector<String, DefaultEdge> inspector = new KosarajuStrongConnectivityInspector<String, DefaultEdge>(digraph);
         
         List<Set<String>> subgraphs = inspector.stronglyConnectedSets();
         for(Set<String> nodes : subgraphs){
