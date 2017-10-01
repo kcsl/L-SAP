@@ -6,7 +6,7 @@
 name: L-SAP
 
 # Short bio or description (displayed in the header)
-description: Scalable and Accurate Lock/Unlock Pairing for Linux Kernel
+description: Scalable and Accurate Linux Lock/Unlock Pairing
 
 # URL of your avatar or profile pic (you could use your GitHub profile pic)
 avatar: https://kcsl.github.io/L-SAP/images/toolbox.png

@@ -5,7 +5,7 @@ layout: default
 ## Overview
 L-SAP is a program analysis plugin for Eclipse that performs scalable and accurate lock/unlock pairing analysis for Linux Kernel. It incorporates algorithmic and heuristic innovations to address the major challenges to advance the state-of-the-art for accurate and scalable pairing analysis.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/uIfcuOGvcxw" frameborder="0" allowfullscreen></iframe>
+<center><iframe width="560" height="315" src="https://www.youtube.com/embed/uIfcuOGvcxw" frameborder="0" allowfullscreen></iframe></center>
 
 ## Getting Started
 Ready to get started?
