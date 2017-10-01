@@ -1,0 +1,6 @@
+# Stuff not to ignore
+!*.dll
+!*.so
+!*.dylib
+!*.jnilib
+!bin/

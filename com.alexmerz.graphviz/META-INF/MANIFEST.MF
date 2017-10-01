@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: JPGD - Java-based Parser for Graphviz Documents
+Bundle-SymbolicName: com.alexmerz.graphviz
+Bundle-Version: 1.0.0
+Bundle-ClassPath: .
+Bundle-Vendor: Alexander Merz
+Export-Package: com.alexmerz.graphviz,
+ com.alexmerz.graphviz.cli,
+ com.alexmerz.graphviz.objects,
+ com.alexmerz.graphviz.unittest
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
