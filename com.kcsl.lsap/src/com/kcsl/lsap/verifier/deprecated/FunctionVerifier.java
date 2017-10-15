@@ -1,4 +1,4 @@
-package com.kcsl.lsap.verifier;
+package com.kcsl.lsap.verifier.deprecated;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,8 +13,8 @@ import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.kcsl.lsap.atlas.LinuxScripts;
-import com.kcsl.lsap.atlas.Queries;
+import com.kcsl.lsap.atlas.deprecated.LinuxScripts;
+import com.kcsl.lsap.atlas.deprecated.Queries;
 
 public class FunctionVerifier {
 

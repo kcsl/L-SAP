@@ -1,4 +1,4 @@
-package com.kcsl.lsap.efg;
+package com.kcsl.lsap.efg.deprecated;
 
 import static com.ensoftcorp.atlas.core.script.Common.universe;
 
@@ -15,9 +15,9 @@ import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.kcsl.lsap.dominance.ControlFlowGraph;
-import com.kcsl.lsap.dominance.DominanceAnalysis;
-import com.kcsl.lsap.dominance.DominanceAnalysis.Multimap;
+import com.kcsl.lsap.dominance.deprecated.ControlFlowGraph;
+import com.kcsl.lsap.dominance.deprecated.DominanceAnalysis;
+import com.kcsl.lsap.dominance.deprecated.DominanceAnalysis.Multimap;
 
 /**
  * A class that implements the event flow graph transformations to transform a given CFG into EFG

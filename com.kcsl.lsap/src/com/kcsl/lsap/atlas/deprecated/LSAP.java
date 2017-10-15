@@ -1,4 +1,4 @@
-package com.kcsl.lsap.atlas;
+package com.kcsl.lsap.atlas.deprecated;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -19,11 +19,11 @@ import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
-import com.kcsl.lsap.efg.EventFlowGraphTransformation;
-import com.kcsl.lsap.verifier.CFGDisconnectedException;
-import com.kcsl.lsap.verifier.EFGCreationException;
-import com.kcsl.lsap.verifier.Utils;
-import com.kcsl.lsap.verifier.Verifier;
+import com.kcsl.lsap.efg.deprecated.EventFlowGraphTransformation;
+import com.kcsl.lsap.verifier.deprecated.CFGDisconnectedException;
+import com.kcsl.lsap.verifier.deprecated.EFGCreationException;
+import com.kcsl.lsap.verifier.deprecated.Utils;
+import com.kcsl.lsap.verifier.deprecated.Verifier;
 
 public class LSAP {
 

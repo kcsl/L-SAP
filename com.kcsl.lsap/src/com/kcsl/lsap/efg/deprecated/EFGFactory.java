@@ -1,4 +1,4 @@
-package com.kcsl.lsap.efg;
+package com.kcsl.lsap.efg.deprecated;
 
 
 import static com.ensoftcorp.atlas.core.script.Common.universe;
@@ -9,7 +9,7 @@ import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.kcsl.lsap.atlas.Queries;
+import com.kcsl.lsap.atlas.deprecated.Queries;
 
 public class EFGFactory {
 

@@ -1,34 +1,30 @@
-package com.kcsl.lsap.atlas;
+package com.kcsl.lsap.atlas.deprecated;
 
 import java.awt.Color;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
 import com.ensoftcorp.atlas.core.db.graph.Graph;
-import com.ensoftcorp.atlas.core.db.graph.GraphElement.NodeDirection;
 import com.ensoftcorp.atlas.core.db.graph.Node;
+import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.highlight.H;
 import com.ensoftcorp.atlas.core.highlight.Highlighter;
 import com.ensoftcorp.atlas.core.highlight.Highlighter.ConflictStrategy;
-import com.ensoftcorp.atlas.core.index.common.SourceCorrespondence;
 import com.ensoftcorp.atlas.core.log.Log;
-import com.ensoftcorp.atlas.core.markup.MarkupFromH;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.ensoftcorp.atlas.ui.viewer.graph.SaveUtil;
-import com.kcsl.lsap.dot.DOTGraph;
-import com.kcsl.lsap.efg.EFGFactory;
-import com.kcsl.lsap.verifier.MatchingPair;
-import com.kcsl.lsap.verifier.Utils;
+import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
+import com.kcsl.lsap.efg.deprecated.EFGFactory;
+import com.kcsl.lsap.verifier.deprecated.MatchingPair;
+import com.kcsl.lsap.verifier.deprecated.Utils;
 
-public class LockSignatureStatistics {
+public class SpecificLockResults {
 	
-	private File RESULTS_DIRECTORY;
+	private Node selectedLock;
 	private Node signature;
 	private Graph mpg;
 	private Q verifiedLocks;
@@ -37,15 +33,12 @@ public class LockSignatureStatistics {
 	private Q partiallyLocks;
 	private HashMap<Node, HashSet<MatchingPair>> pairs;
 	
-	private final String IMAGE_EXTENSION = ".png";
-	private final boolean SAVE_DOT_FORMAT = false;
-	private final String DOT_EXTENSION = ".dot";
-	
 	public enum STATUS {
 		PAIRED, PARTIALLY_PAIRED, DEADLOCK, UNPAIRED
 	}
 	
-	public LockSignatureStatistics(Node sig, Graph envelope, HashMap<Node, HashSet<MatchingPair>> matchingPairs, Q vLocks, Q dLocks, Q dnLocks, Q pLocks) {
+	public SpecificLockResults(Node selected, Node sig, Graph envelope, HashMap<Node, HashSet<MatchingPair>> matchingPairs, Q vLocks, Q dLocks, Q dnLocks, Q pLocks) {
+		this.setSelectedLock(selected);
 		this.setSignature(sig);
 		this.setMpg(envelope);
 		this.setPairs(matchingPairs);
@@ -55,40 +48,49 @@ public class LockSignatureStatistics {
 		this.setPartiallyLocks(pLocks);
 	}
 	
-	public void process(){
+	public String process(){
+		String result = "";
+		Log.info("Processing Lock:" + (++LinuxScripts.LOCK_PROGRESS_COUNT));
 		// A paired lock is never partially paired or unpaired or deadlock
 		Q pairedLocks = this.getVerifiedLocks().difference(this.getPartiallyLocks(), this.getDanglingLocks(), this.getDoubleLocks());
 		for(Node lock : pairedLocks.eval().nodes()){
-			this.processLock(lock, STATUS.PAIRED);
+			if(lock == selectedLock){
+				this.processLock(lock, STATUS.PAIRED);
+				result = "Paired: Lock is followed by UNLOCK on all execution paths.";
+			}
 		}
 		
 		// A partially paired lock should not be a deadlock
 		Q partiallyPairedLocks = this.getPartiallyLocks().difference(this.getDoubleLocks());
 		for(Node lock : partiallyPairedLocks.eval().nodes()){
-			this.processLock(lock, STATUS.PARTIALLY_PAIRED);
+			if(lock == selectedLock){
+				this.processLock(lock, STATUS.PARTIALLY_PAIRED);
+				result = "Unpaired: There is a feasible path on which LOCK is not followed by UNLOCK";
+			}
 		}
 		
 		// A deadlock lock is only if it has deadlock
 		Q deadlockPairedLocks = this.getDoubleLocks();
 		for(Node lock : deadlockPairedLocks.eval().nodes()){
-			this.processLock(lock, STATUS.DEADLOCK);
+			if(lock == selectedLock){
+				this.processLock(lock, STATUS.DEADLOCK);
+				result = "Deadlock: There is a feasible path on which LOCK is not followed by another LOCK";
+			}
 		}
 		
 		// An unpaired lock cannot be partially paired or paired
 		Q unpairedLocks = this.getDanglingLocks().difference(this.getVerifiedLocks(), this.getPartiallyLocks());
 		for(Node lock : unpairedLocks.eval().nodes()){
-			this.processLock(lock, STATUS.UNPAIRED);
+			if(lock == selectedLock){
+				this.processLock(lock, STATUS.UNPAIRED);
+				result = "Unpaired: There is a feasible path on which LOCK is not followed by UNLOCK";
+			}
 		}
+		return result;
 	}
 	
 	private void processLock(Node lock, STATUS status){
-		Utils.debug(0, "Processing Lock:" + (++LinuxScripts.LOCK_PROGRESS_COUNT));
-		
-		// STEP 1: CREATE A LOCK FOLDER
-		//Log.info("STEP 1: CREATING LOCK FOLDER");
-		if(!this.createLockFolder(lock, status)){
-			return;
-		}
+		Log.info("Processing Lock:" + (++LinuxScripts.LOCK_PROGRESS_COUNT));
 		
 		AtlasSet<Node> unlocks = new AtlasHashSet<Node>();
 		if(!status.equals(STATUS.UNPAIRED)){
@@ -111,15 +113,7 @@ public class LockSignatureStatistics {
 		}
 		mpgForLock = mpgForLock.retainEdges();
 		Graph mpgGraph = mpgForLock.eval();
-		//Utils.debug(0, "\tSTEP 2: CREATING MPG[" + mpgGraph.nodes().size() + "]");
-		if(this.SAVE_DOT_FORMAT){
-			DOTGraph mpgDotGraph = new DOTGraph(mpgGraph.nodes(), mpgGraph.edges(), null);
-			mpgDotGraph.saveGraph(this.RESULTS_DIRECTORY, "mpg" + this.DOT_EXTENSION);
-		}else{
-			try{
-				SaveUtil.saveGraph(new File(this.RESULTS_DIRECTORY, "mpg" + this.IMAGE_EXTENSION), mpgGraph).join();
-			} catch (InterruptedException e) {}	
-		}
+		DisplayUtil.displayGraph(mpgGraph, LSAP.highlight(mpgForLock), "Matching Pair Graph");
 		
 		// STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG
 		//Log.info("STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG");
@@ -128,14 +122,8 @@ public class LockSignatureStatistics {
 		for(Node mpgFunction : mpgFunctions){
 			String methodName = mpgFunction.getAttr(XCSG.name).toString();
 			Utils.debug(0, "FUNCTION [" + methodName + "]");
-			SourceCorrespondence sc = (SourceCorrespondence) mpgFunction.attr().get(XCSG.sourceCorrespondence);
-			String sourceFile = "<external>";
-			if(sc != null){
-				sourceFile = fixSlashes(sc.toString());
-			}
 			
-			Q cfg = Queries.CFG(Common.toQ(mpgFunction));
-			Graph cfgGraph = cfg.eval();			
+			Q cfg = Queries.CFG(Common.toQ(mpgFunction));		
 			
 			ArrayList<Q> results = null;
 			if(status.equals(STATUS.DEADLOCK)){
@@ -152,77 +140,12 @@ public class LockSignatureStatistics {
 			h.highlight(unlockEvents, Color.GREEN);
 			h.highlight(callsiteEvents, Color.BLUE);
 			
-			// STEP 3A: SAVE CFG
-			long nodes = cfgGraph.nodes().size();
-			long edges = cfgGraph.edges().size();
-			long conditions = cfgGraph.nodes().taggedWithAll(XCSG.ControlFlowCondition).size();
-			
-			String cfgFileName = "CFG@@@" + methodName + "@@@" + sourceFile + "@@@"  + nodes + "@@@" + edges + "@@@" + conditions;
-			//Utils.debug(0, "\tSTEP 3: SAVING CFG[" + nodes + "]");
-			if(this.SAVE_DOT_FORMAT){
-				DOTGraph cfgDotGraph = new DOTGraph(cfgGraph.nodes(), cfgGraph.edges(), h);
-				cfgDotGraph.saveGraph(this.RESULTS_DIRECTORY, cfgFileName + this.DOT_EXTENSION);
-			}else{
-				try{
-					SaveUtil.saveGraph(new File(this.RESULTS_DIRECTORY, cfgFileName + this.IMAGE_EXTENSION), cfgGraph, new MarkupFromH(h)).join();
-				} catch (InterruptedException e) {}
-			}
+			DisplayUtil.displayGraph(Common.extend(cfg, XCSG.Contains).eval(), h, "CFG - " + methodName);
 			
 			Q efg = EFGFactory.EFG(cfg, eventNodes);
-			
-			// STEP 3A: SAVE EFG
-			Graph efgGraph = efg.eval();
-			nodes = efgGraph.nodes().size();
-			edges = efgGraph.edges().size();
-			conditions = 0;
-			for(Node node : efg.eval().nodes()){
-				if(efgGraph.edges(node, NodeDirection.OUT).size() > 1){
-					conditions++;
-				}
-			}
-			String efgFileName = "EFG@@@" + methodName + "@@@" + sourceFile + "@@@"  + nodes + "@@@" + edges + "@@@" + conditions; 
-			if(this.SAVE_DOT_FORMAT){
-				DOTGraph efgDotGraph = new DOTGraph(efgGraph.nodes(), efgGraph.edges(), h);
-				efgDotGraph.saveGraph(this.RESULTS_DIRECTORY, efgFileName + this.DOT_EXTENSION);
-			}else{
-				try {
-					SaveUtil.saveGraph(new File(this.RESULTS_DIRECTORY, efgFileName + this.IMAGE_EXTENSION), efgGraph, new MarkupFromH(h)).join();
-				} catch (InterruptedException e) {}
-			}
+			DisplayUtil.displayGraph(Common.extend(efg, XCSG.Contains).eval(), h, "EFG - " + methodName);
 		}
 		Utils.debug(0, "Done Processing Lock:" + (LinuxScripts.LOCK_PROGRESS_COUNT));
-	}
-	
-	private boolean createLockFolder(Node lock, STATUS status){
-		String scString = "<external>";
-		SourceCorrespondence sc = (SourceCorrespondence) lock.attr().get(XCSG.sourceCorrespondence);
-		if(sc != null){
-			scString = fixSlashes(sc.toString());
-		}
-		
-		String folderPrefix = "";
-		switch(status){
-		case PAIRED:
-			folderPrefix = "PAIRED";
-			break;
-		case PARTIALLY_PAIRED:
-			folderPrefix = "PARTIALLY";
-			break;
-		case DEADLOCK:
-			folderPrefix = "DEADLOCK";
-			break;
-		case UNPAIRED:
-			folderPrefix = "UNPAIRED";
-			break;
-		}
-		
-		String lockFolderName = folderPrefix + "@@@" + lock.address().toAddressString() + "@@@" + scString + "@@@" + this.signature.attr().get(XCSG.name).toString();
-		this.RESULTS_DIRECTORY = new File(LinuxScripts.GRAPH_RESULTS_PATH + lockFolderName);
-		if(!RESULTS_DIRECTORY.mkdir()){
-			Log.info("Cannot create directory:" + this.RESULTS_DIRECTORY.getAbsolutePath());
-			return false;
-		}
-		return true;
 	}
 	
 	private Q getMPGforLock(Node lock, AtlasSet<Node> unlocks){
@@ -281,10 +204,6 @@ public class LockSignatureStatistics {
 		results.add(callsiteEvents);
 		return results;
 	}
-	
-	private String fixSlashes(String string){
-		return string.replace('/', '@');
-	}
 
 	public Node getSignature() {
 		return signature;
@@ -340,6 +259,14 @@ public class LockSignatureStatistics {
 
 	public void setPairs(HashMap<Node, HashSet<MatchingPair>> pairs) {
 		this.pairs = pairs;
+	}
+
+	public Node getSelectedLock() {
+		return selectedLock;
+	}
+
+	public void setSelectedLock(Node selectedLock) {
+		this.selectedLock = selectedLock;
 	}
 	
 }

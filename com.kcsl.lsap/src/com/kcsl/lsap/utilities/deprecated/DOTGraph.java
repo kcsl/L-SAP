@@ -1,4 +1,4 @@
-package com.kcsl.lsap.dot;
+package com.kcsl.lsap.utilities.deprecated;
 
 import java.awt.Color;
 import java.io.File;

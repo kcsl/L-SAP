@@ -1,4 +1,4 @@
-package com.kcsl.lsap.utilities;
+package com.kcsl.lsap.utilities.deprecated;
 
 import java.util.ArrayList;
 

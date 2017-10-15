@@ -1,4 +1,4 @@
-package com.kcsl.lsap.atlas;
+package com.kcsl.lsap.atlas.deprecated;
 
 public class Condition {
 

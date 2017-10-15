@@ -1,4 +1,4 @@
-package com.kcsl.lsap.dominance;
+package com.kcsl.lsap.dominance.deprecated;
 
 import java.util.HashSet;
 import java.util.Iterator;

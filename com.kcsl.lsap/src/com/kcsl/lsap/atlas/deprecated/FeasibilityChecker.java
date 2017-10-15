@@ -1,4 +1,4 @@
-package com.kcsl.lsap.atlas;
+package com.kcsl.lsap.atlas.deprecated;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,7 +17,7 @@ import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
-import com.kcsl.lsap.verifier.Utils;
+import com.kcsl.lsap.verifier.deprecated.Utils;
 
 import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDDFactory;

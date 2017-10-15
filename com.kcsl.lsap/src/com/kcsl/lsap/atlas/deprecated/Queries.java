@@ -1,4 +1,4 @@
-package com.kcsl.lsap.atlas;
+package com.kcsl.lsap.atlas.deprecated;
 
 import java.awt.Color;
 import java.io.FileWriter;
@@ -23,7 +23,7 @@ import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
-import com.kcsl.lsap.efg.EFGFactory;
+import com.kcsl.lsap.efg.deprecated.EFGFactory;
 
 public class Queries {
 	

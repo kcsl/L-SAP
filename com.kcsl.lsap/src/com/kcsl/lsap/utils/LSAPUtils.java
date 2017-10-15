@@ -24,9 +24,7 @@ import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
-import com.kcsl.lsap.atlas.Queries;
 import com.kcsl.lsap.core.VerificationProperties;
-import com.kcsl.lsap.verifier.Utils;
 
 public class LSAPUtils {
 	
@@ -62,7 +60,7 @@ public class LSAPUtils {
 	public static String toString(AtlasList<Node> path){
 		StringBuilder result = new StringBuilder();
 		for(int i = 0; i < path.size(); i++){
-			result.append(Utils.toString(path.get(i)));
+			result.append(path.get(i).getAttr(XCSG.name));
 			if(i < path.size() - 1){
 				result.append(" >>> ");
 			}
@@ -201,7 +199,7 @@ public class LSAPUtils {
 		// Filtration for the MPG
 		Q lockUnlockFunctionCallsQ = functionsQ(lockFunctionCalls).union(functionsQ(unlockFunctionCalls));
 		mpg = mpg.union(lockUnlockFunctionCallsQ);
-		mpg = mpg.induce(Queries.callEdgesContext);
+		mpg = mpg.induce(universe().edges(XCSG.Call));
 		Q toRemoveEdges = mpg.edges(XCSG.Call).forwardStep(lockUnlockFunctionCallsQ).edges(XCSG.Call);
 		mpg = mpg.differenceEdges(toRemoveEdges);
 		Q unused = mpg.roots().intersection(mpg.leaves());

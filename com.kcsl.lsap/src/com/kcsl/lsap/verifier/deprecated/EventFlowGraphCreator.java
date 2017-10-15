@@ -1,4 +1,4 @@
-package com.kcsl.lsap.verifier;
+package com.kcsl.lsap.verifier.deprecated;
 
 import java.util.ArrayList;
 import java.util.HashMap;

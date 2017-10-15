@@ -1,4 +1,4 @@
-package com.kcsl.lsap.atlas;
+package com.kcsl.lsap.atlas.deprecated;
 
 import java.awt.Color;
 import java.util.HashMap;
@@ -13,7 +13,7 @@ import com.ensoftcorp.atlas.core.highlight.Highlighter;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
-import com.kcsl.lsap.verifier.Utils;
+import com.kcsl.lsap.verifier.deprecated.Utils;
 
 public class TryEventsFeasibilityMiner {
 	

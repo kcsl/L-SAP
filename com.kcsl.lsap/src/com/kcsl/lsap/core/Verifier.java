@@ -17,8 +17,8 @@ import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.kcsl.lsap.core.LockVerificationGraphsGenerator.STATUS;
+import com.kcsl.lsap.core.MatchingPair.VerificationResult;
 import com.kcsl.lsap.utils.LSAPUtils;
-import com.kcsl.lsap.verifier.MatchingPair.VerificationResult;
 
 public class Verifier {
 	private Path graphsOutputDirectoryPath;
@@ -296,7 +296,7 @@ public class Verifier {
 			LSAPUtils.log("##########################################");
 			LSAPUtils.log("Deadloced Lock Events");
 			LSAPUtils.log("##########################################");
-			this.logMatchingResultsForEvents(doubleE1Events, VerificationResult.DOUBLE_LOCK);
+			this.logMatchingResultsForEvents(doubleE1Events, VerificationResult.DEADLOCKED);
 			LSAPUtils.log("------------------------------------------");
 		}
 	}

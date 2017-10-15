@@ -1,4 +1,4 @@
-package com.kcsl.lsap.verifier;
+package com.kcsl.lsap.verifier.deprecated;
 public class PathStatus 
 {
     final public static int UNKNOWN = 0;

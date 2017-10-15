@@ -1,4 +1,4 @@
-package com.kcsl.lsap.verifier;
+package com.kcsl.lsap.verifier.deprecated;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -15,7 +15,7 @@ import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
-import com.kcsl.lsap.verifier.MatchingPair.VerificationResult;
+import com.kcsl.lsap.verifier.deprecated.MatchingPair.VerificationResult;
 
 public class Verifier {
 	public static boolean FEASIBILITY_ENABLED = true;

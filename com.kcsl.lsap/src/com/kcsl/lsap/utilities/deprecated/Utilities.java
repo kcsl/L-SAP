@@ -1,4 +1,4 @@
-package com.kcsl.lsap.utilities;
+package com.kcsl.lsap.utilities.deprecated;
 
 import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;

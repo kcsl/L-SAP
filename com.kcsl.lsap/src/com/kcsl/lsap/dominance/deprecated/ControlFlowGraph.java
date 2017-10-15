@@ -1,4 +1,4 @@
-package com.kcsl.lsap.dominance;
+package com.kcsl.lsap.dominance.deprecated;
 
 import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;

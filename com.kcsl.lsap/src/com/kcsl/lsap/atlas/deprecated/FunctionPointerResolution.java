@@ -1,4 +1,4 @@
-package com.kcsl.lsap.atlas;
+package com.kcsl.lsap.atlas.deprecated;
 
 import static com.ensoftcorp.atlas.core.script.Common.universe;
 
