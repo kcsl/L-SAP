@@ -31,6 +31,8 @@ public class VerificationProperties {
 	private static boolean SAVE_GRAPH_IN_DOT_FORMAT;
 	private static String GRAPH_IMAGE_FILENAME_EXTENSION;
 	private static String GRAPH_DOT_FILENAME_EXTENSION;
+	
+	private static Path INTERACTIVE_VERIFICATION_GRAPHS_OUTPUT_DIRECTORY_PATH;
 
 	private static boolean FEASIBILITY_ENABLED;
 	
@@ -90,6 +92,7 @@ public class VerificationProperties {
 			SAVE_GRAPH_IN_DOT_FORMAT = Boolean.parseBoolean(properties.getProperty("save_graphs_in_dot_format"));
 			GRAPH_IMAGE_FILENAME_EXTENSION = properties.getProperty("graph_image_filename_extension");
 			GRAPH_DOT_FILENAME_EXTENSION = properties.getProperty("graph_dot_filename_extension");
+			INTERACTIVE_VERIFICATION_GRAPHS_OUTPUT_DIRECTORY_PATH = Paths.get(OUTPUT_DIRECTORY.toFile().getAbsolutePath(), properties.getProperty("interactive_verification_graphs_output_directory_name"));
 			
 			SPIN_OBJECT_TYPE = universe().nodes(XCSG.TypeAlias).selectNode(XCSG.name, properties.getProperty("spin_object_typename"));
 			SPIN_LOCK_FUNCTION_CALLS = Arrays.asList(properties.getProperty("spin_lock").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
@@ -145,6 +148,11 @@ public class VerificationProperties {
 	public static String getGraphDotFileNameExtension(){
 		return GRAPH_DOT_FILENAME_EXTENSION;
 	}
+	
+	public static Path getInteractiveVerificationGraphsOutputDirectory(){
+		return INTERACTIVE_VERIFICATION_GRAPHS_OUTPUT_DIRECTORY_PATH;
+	}
+	
 	
 	
 	public static Q getMutexObjectType(){

@@ -74,7 +74,7 @@ public class Verifier {
 		this.graphsOutputDirectoryPath = graphsOutputDirectoryPath;
 	}
 	
-	public Reporter verify(){
+	public Reporter verify(Node lockNode){
 		LSAPUtils.log("MPG has ["+ this.mpg.eval().nodes().size() +"] nodes.");
 		Reporter reporter = new Reporter();
 		
@@ -92,13 +92,13 @@ public class Verifier {
 		reporter.done();
 		
 		if(reporter != null && VerificationProperties.isSaveVerificationGraphs()){
-			this.saveLockVerificationGraphs();
+			this.saveLockVerificationGraphs(lockNode);
 		}
 		
 		return reporter;
 	}
 	
-	private void saveLockVerificationGraphs(){
+	private void saveLockVerificationGraphs(Node lockNode){
 		Q verifiedLocks = Common.toQ(this.verifiedLocks);
 		Q doubleLocks = Common.toQ(this.doubleLocks);
 		Q danglingLocks = Common.toQ(this.danglingLocks);
@@ -109,24 +109,32 @@ public class Verifier {
 		// A paired lock is never partially paired or unpaired or deadlock
 		Q pairedLocks = verifiedLocks.difference(partiallyLocks, danglingLocks, doubleLocks);
 		for(Node lock : pairedLocks.eval().nodes()){
-			lockVerificationGraphsGenerator.process(lock, STATUS.PAIRED);
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, STATUS.PAIRED);
+			}
 		}
 		
 		// A partially paired lock should not be a deadlock
 		Q partiallyPairedLocks = partiallyLocks.difference(doubleLocks);
 		for(Node lock : partiallyPairedLocks.eval().nodes()){
-			lockVerificationGraphsGenerator.process(lock, STATUS.PARTIALLY_PAIRED);
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, STATUS.PARTIALLY_PAIRED);
+			}
 		}
 		
 		// A deadlock lock is only if it has deadlock
 		for(Node lock : this.doubleLocks){
-			lockVerificationGraphsGenerator.process(lock, STATUS.DEADLOCK);
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, STATUS.DEADLOCK);
+			}
 		}
 		
 		// An unpaired lock cannot be partially paired or paired
 		Q unpairedLocks = danglingLocks.difference(verifiedLocks, partiallyLocks);
 		for(Node lock : unpairedLocks.eval().nodes()){
-			lockVerificationGraphsGenerator.process(lock, STATUS.UNPAIRED);
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, STATUS.UNPAIRED);
+			}
 		}
 	}
 
