@@ -16,57 +16,121 @@ import com.ensoftcorp.atlas.core.xcsg.XCSG;
 
 public class VerificationProperties {
 	
+	/**
+	 * A {@link String} corresponding to the separator between multi-values in "config.properties" file.
+	 */
 	private static final String CONFIG_PROPERTIES_FILE_SEPARATOR = ",";
 	
 	/**
 	 * An attribute to tag the duplicated nodes that have multiple verification statuses
 	 */
-	final public static String DUPLICATE_NODE = "duplicateNode";
+	public static final String DUPLICATE_NODE = "DUPLICATE_NODE";
 	
 	/**
 	 * An attribute to tag the duplicated edges that connect duplicated nodes
 	 */
-	final public static String DUPLICATE_EDGE = "duplicateEdge";
+	public static final String DUPLICATE_EDGE = "DUPLICATE_EDGE";
 	
+	/**
+	 * A {@link boolean} flag to indicate whether to save verification graphs in "dot" format.
+	 */
 	private static boolean SAVE_GRAPH_IN_DOT_FORMAT;
+	
+	/**
+	 * A {@link String} corresponding to image file extension.
+	 */
 	private static String GRAPH_IMAGE_FILENAME_EXTENSION;
+	
+	/**
+	 * A {@link String} corresponding to dot file extension.
+	 */
 	private static String GRAPH_DOT_FILENAME_EXTENSION;
 	
+	/**
+	 * A {@link Path} corresponding to the root directory where interactive verification graphs to be saved.
+	 */
 	private static Path INTERACTIVE_VERIFICATION_GRAPHS_OUTPUT_DIRECTORY_PATH;
 
+	/**
+	 * A {@link boolean} flag to indicate whether the feasibility checking is enabled in this verification.
+	 */
 	private static boolean FEASIBILITY_ENABLED;
 	
+	/**
+	 * A {@link Path} to indicate the root directory where all the verification results will be saved.
+	 * <p>
+	 * This will be the root directory where all sub-directories and files will be created.
+	 */
 	private static Path OUTPUT_DIRECTORY;
 	
+	/**
+	 * An instance of {@link FileWriter} that will be used to report verification result to a log file.
+	 */
 	private static FileWriter OUTPUT_LOG_FILE_WRITER;
 	
+	/**
+	 * A list of {@link String}s corresponding to the name of functions that need to be excluded from data flow analysis computationas they are causing problems.
+	 */
 	private static List<String> FUNCTIONS_TO_EXCLUDE;
 	
+	/**
+	 * A limit on the size of MPG nodes that can be considered for verification.
+	 */
 	private static int MPG_NODE_SIZE_LIMIT;
 	
+	/**
+	 * A {@link boolean} flag to indicate whether to the save the verification graphs.
+	 */
 	private static boolean SAVE_VERIFICATION_GRAPHS;
 	
-	
-	
+	/**
+	 * A {@link Q} corresponding to the type of a mutex object. This would be the signature for verification.
+	 */
 	private static Q MUTEX_OBJECT_TYPE;
 	
+	/**
+	 * A {@link Path} to be used for saving the mutex verification graphs.
+	 */
 	private static Path MUTEX_GRAPHS_OUTPUT_DIRECTORY_PATH;
 	
+	/**
+	 * A list of {@link String}s corresponding to the name of mutex lock function calls.
+	 */
 	private static List<String> MUTEX_LOCK_FUNCTION_CALLS;
 	
+	/**
+	 * A list of {@link String}s corresponding to the name of mutex unlock function calls.
+	 */
 	private static List<String> MUTEX_UNLOCK_FUNCTION_CALLS;
 	
+	/**
+	 * A list of {@link String}s corresponding to the name of mutex lock function calls that has multi-state.
+	 */
 	private static List<String> MUTEX_TRYLOCK_FUNCTION_CALLS;
 	
-	
+	/**
+	 * A {@link Q} corresponding to the type of a spin object. This would be the signature for verification.
+	 */
 	private static Q SPIN_OBJECT_TYPE;
 	
+	/**
+	 * A {@link Path} to be used for saving the spin verification graphs.
+	 */
 	private static Path SPIN_GRAPHS_OUTPUT_DIRECTORY_PATH;
 	
+	/**
+	 * A list of {@link String}s corresponding to the name of spin lock function calls.
+	 */
 	private static List<String> SPIN_LOCK_FUNCTION_CALLS;
 	
+	/**
+	 * A list of {@link String}s corresponding to the name of spin unlock function calls.
+	 */
 	private static List<String> SPIN_UNLOCK_FUNCTION_CALLS;
 	
+	/**
+	 * A list of {@link String}s corresponding to the name of spin lock function calls that has multi-state.
+	 */
 	private static List<String> SPIN_TRYLOCK_FUNCTION_CALLS;
 	
 	static{
@@ -88,25 +152,20 @@ public class VerificationProperties {
 			FUNCTIONS_TO_EXCLUDE = Arrays.asList(properties.getProperty("function_to_exclude"));
 			MPG_NODE_SIZE_LIMIT = Integer.parseInt(properties.getProperty("mpg_node_size_limit"));
 			SAVE_VERIFICATION_GRAPHS = Boolean.parseBoolean(properties.getProperty("save_verification_graphs"));
-			
 			SAVE_GRAPH_IN_DOT_FORMAT = Boolean.parseBoolean(properties.getProperty("save_graphs_in_dot_format"));
 			GRAPH_IMAGE_FILENAME_EXTENSION = properties.getProperty("graph_image_filename_extension");
 			GRAPH_DOT_FILENAME_EXTENSION = properties.getProperty("graph_dot_filename_extension");
 			INTERACTIVE_VERIFICATION_GRAPHS_OUTPUT_DIRECTORY_PATH = Paths.get(OUTPUT_DIRECTORY.toFile().getAbsolutePath(), properties.getProperty("interactive_verification_graphs_output_directory_name"));
-			
 			SPIN_OBJECT_TYPE = universe().nodes(XCSG.TypeAlias).selectNode(XCSG.name, properties.getProperty("spin_object_typename"));
 			SPIN_LOCK_FUNCTION_CALLS = Arrays.asList(properties.getProperty("spin_lock").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
 			SPIN_UNLOCK_FUNCTION_CALLS = Arrays.asList(properties.getProperty("spin_unlock").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
 			SPIN_TRYLOCK_FUNCTION_CALLS = Arrays.asList(properties.getProperty("spin_trylock").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
 			SPIN_GRAPHS_OUTPUT_DIRECTORY_PATH = Paths.get(OUTPUT_DIRECTORY.toFile().getAbsolutePath(), properties.getProperty("spin_graphs_output_directory_name"));
-			
-			
 			MUTEX_OBJECT_TYPE = universe().nodes(XCSG.C.Struct).selectNode(XCSG.name, properties.getProperty("mutex_object_typename"));
 			MUTEX_LOCK_FUNCTION_CALLS = Arrays.asList(properties.getProperty("mutex_lock").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
 			MUTEX_UNLOCK_FUNCTION_CALLS = Arrays.asList(properties.getProperty("mutex_unlock").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
 			MUTEX_TRYLOCK_FUNCTION_CALLS = Arrays.asList(properties.getProperty("mutex_trylock").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
 			MUTEX_GRAPHS_OUTPUT_DIRECTORY_PATH = Paths.get(OUTPUT_DIRECTORY.toFile().getAbsolutePath(), properties.getProperty("mutex_graphs_output_directory_name"));
-			
 		
 		} catch (IOException e) {
 			System.err.println("Cannot locate the properties file.");
@@ -153,8 +212,6 @@ public class VerificationProperties {
 		return INTERACTIVE_VERIFICATION_GRAPHS_OUTPUT_DIRECTORY_PATH;
 	}
 	
-	
-	
 	public static Q getMutexObjectType(){
 		return MUTEX_OBJECT_TYPE;
 	}
@@ -174,7 +231,6 @@ public class VerificationProperties {
 	public static Path getMutexGraphsOutputDirectory(){
 		return MUTEX_GRAPHS_OUTPUT_DIRECTORY_PATH;
 	}
-	
 	
 	public static Q getSpinObjectType(){
 		return SPIN_OBJECT_TYPE;

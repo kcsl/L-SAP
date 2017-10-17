@@ -196,9 +196,9 @@ public class Verifier {
 		
 		FunctionVerifier functionVerifier = new FunctionVerifier(function, pcg, successorFunctionSummaries);	
 		FunctionSummary summary = functionVerifier.run(events);
-		this.lockFunctionCallEvents.addAll(summary.getE1Events());
+		this.lockFunctionCallEvents.addAll(summary.getLockFunctionCallEvents());
 		this.multiStateLockFunctionCallEvents.addAll(summary.getE1MayEvents());
-		this.unlockFunctionCallEvents.addAll(summary.getE2Events());
+		this.unlockFunctionCallEvents.addAll(summary.getUnlockFunctionCallEvents());
 		
 		for(Node node : summary.getMatchingPairsMap().keySet()){
 			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();

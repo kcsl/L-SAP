@@ -104,7 +104,6 @@ public class FunctionVerifier {
 
 	@SuppressWarnings("unchecked")
 	public Object[] traverse(Node node, int pathStatus, AtlasSet<Node> nodeInstances){
-		//Utils.debug(0, "Path Status: [" + Utils.toString(node) + "] \t [" + PathStatus.PathStatusToText(pathStatus) + "]");
     	int rets = 0, outs, childrens, childs;
     	AtlasSet<Node> retl = new AtlasHashSet<Node>();
     	AtlasSet<Node> outl = new AtlasHashSet<Node>();

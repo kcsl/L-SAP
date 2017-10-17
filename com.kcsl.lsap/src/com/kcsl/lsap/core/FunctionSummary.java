@@ -88,10 +88,10 @@ public class FunctionSummary {
 		this.setFunction(function);
 		this.setPCG(pcg);
 		this.setAllEvents(events);
-		this.setE1Events(events.get(0).eval().nodes());
-		this.setE2Events(events.get(1).eval().nodes());
-		this.setCallEvents(events.get(2).eval().nodes());
-		this.setE1MayEvents(events.get(3).eval().nodes());
+		this.setLockFunctionCallEvents(events.get(0).eval().nodes());
+		this.setUnlockFunctionCallEvents(events.get(1).eval().nodes());
+		this.setCallSiteEvents(events.get(2).eval().nodes());
+		this.setMultiStateLockFunctionCallEvents(events.get(3).eval().nodes());
     	this.setOutl(new AtlasHashSet<Node>());
     	this.setRetl(new AtlasHashSet<Node>());
     	this.feasibilityChecker = null;
@@ -105,19 +105,19 @@ public class FunctionSummary {
 		return this.callEventsFunctionsMap;
 	}
 
-	public AtlasSet<Node> getE1Events() {
+	public AtlasSet<Node> getLockFunctionCallEvents() {
 		return lockFunctionCallEvents;
 	}
 
-	public void setE1Events(AtlasSet<Node> e1Events) {
+	public void setLockFunctionCallEvents(AtlasSet<Node> e1Events) {
 		this.lockFunctionCallEvents = e1Events;
 	}
 
-	public AtlasSet<Node> getE2Events() {
+	public AtlasSet<Node> getUnlockFunctionCallEvents() {
 		return unlockFunctionCallEvents;
 	}
 
-	public void setE2Events(AtlasSet<Node> e2Events) {
+	public void setUnlockFunctionCallEvents(AtlasSet<Node> e2Events) {
 		this.unlockFunctionCallEvents = e2Events;
 	}
 
@@ -125,7 +125,7 @@ public class FunctionSummary {
 		return multiStateLockFunctionCallEvents;
 	}
 
-	public void setE1MayEvents(AtlasSet<Node> e1MayEvents) {
+	public void setMultiStateLockFunctionCallEvents(AtlasSet<Node> e1MayEvents) {
 		this.multiStateLockFunctionCallEvents = e1MayEvents;
 	}
 
@@ -133,7 +133,7 @@ public class FunctionSummary {
 		return callSiteEvents;
 	}
 
-	public void setCallEvents(AtlasSet<Node> callEvents) {
+	public void setCallSiteEvents(AtlasSet<Node> callEvents) {
 		this.callSiteEvents = callEvents;
 	}
 
@@ -167,7 +167,7 @@ public class FunctionSummary {
 
 	public FeasibilityChecker getFeasibilityChecker() {
 		if(this.feasibilityChecker == null){
-			this.feasibilityChecker = new FeasibilityChecker(Common.toQ(Common.toGraph(this.getFunction())));
+			this.feasibilityChecker = new FeasibilityChecker(Common.toQ(this.getFunction()));
 		}
 		return feasibilityChecker;
 	}
@@ -241,8 +241,8 @@ public class FunctionSummary {
 		StringBuilder result = new StringBuilder();
 		result.append("#######################################################################\n");
 		result.append("FunctionSummary for [" + this.getFunction().getAttr(XCSG.name) + "]\n");
-		result.append("E1 Events: [" + LSAPUtils.serialize(this.getE1Events()) + "]\n");
-		result.append("E2 Events: [" + LSAPUtils.serialize(this.getE2Events()) + "]\n");
+		result.append("Lock Events: [" + LSAPUtils.serialize(this.getLockFunctionCallEvents()) + "]\n");
+		result.append("Unlock Events: [" + LSAPUtils.serialize(this.getUnlockFunctionCallEvents()) + "]\n");
 		result.append("#######################################################################\n");
 		return result.toString();
 	}
