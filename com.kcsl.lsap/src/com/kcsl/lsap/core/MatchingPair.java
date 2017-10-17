@@ -8,11 +8,13 @@ import java.util.List;
 import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.list.AtlasArrayList;
 import com.ensoftcorp.atlas.core.db.list.AtlasList;
+import com.ensoftcorp.atlas.core.db.map.AtlasMap;
 import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.pcg.common.PCG.PCGNode;
+import com.kcsl.lsap.VerificationProperties;
 import com.kcsl.lsap.feasibility.FeasibilityChecker;
 import com.kcsl.lsap.utils.LSAPUtils;
 
@@ -20,7 +22,7 @@ public class MatchingPair {
 
 	private Node firstEvent;
 	private Node secondEvent;
-	private List<Node> path;
+	private AtlasList<Node> path;
 	private AtlasSet<Node> excludedNodes;
 	private VerificationResult result;
 	
@@ -32,7 +34,7 @@ public class MatchingPair {
 		this.result = null;
 		this.setFirstEvent(e1);
 		this.setSecondEvent(e2);
-		this.path = new ArrayList<Node>();
+		this.path = new AtlasArrayList<Node>();
 		this.path.add(this.getFirstEvent());
 		this.path.add(this.getSecondEvent());
 	}
@@ -45,7 +47,7 @@ public class MatchingPair {
 	 * @param summaries
 	 * @return
 	 */
-	public void verify(AtlasSet<Node> e1Events, AtlasSet<Node> e2Events, HashMap<Node, Boolean> mayEventsFeasibility, HashMap<Node, FunctionSummary> summaries){
+	public void verify(AtlasSet<Node> e1Events, AtlasSet<Node> e2Events, AtlasMap<Node, Boolean> mayEventsFeasibility, AtlasMap<Node, FunctionSummary> summaries){
 		if(this.excludedNodes == null){
 			this.excludedNodes = new AtlasHashSet<Node>();
 			for(Node node : e1Events){
@@ -111,7 +113,7 @@ public class MatchingPair {
 		}
 	}
 	
-	private boolean checkPathFeasibility(HashMap<Node, FunctionSummary> summaries){
+	private boolean checkPathFeasibility(AtlasMap<Node, FunctionSummary> summaries){
 		Node functionForE1 = this.getContainingFunction(this.getFirstEvent(), summaries);
 		Node functionForE2 = this.getContainingFunction(this.getSecondEvent(), summaries);
 		if(functionForE1.equals(functionForE2)){
@@ -140,7 +142,7 @@ public class MatchingPair {
 		}
 	}
 	
-	private Node[] getEventsWithRespectToFirstEvent(HashMap<Node, FunctionSummary> summaries){
+	private Node[] getEventsWithRespectToFirstEvent(AtlasMap<Node, FunctionSummary> summaries){
 		Node functionForE1 = this.getContainingFunction(this.getFirstEvent(), summaries);
 		Node functionForE2 = this.getContainingFunction(this.getSecondEvent(), summaries);
 		if(functionForE1.equals(functionForE2)){
@@ -154,7 +156,7 @@ public class MatchingPair {
 		return new Node[] {this.getFirstEvent(), null};
 	}
 	
-	private Node getContainingFunction(Node node, HashMap<Node, FunctionSummary> summaries){
+	private Node getContainingFunction(Node node, AtlasMap<Node, FunctionSummary> summaries){
 		for(Node function : summaries.keySet()){
 			if(summaries.get(function).getPCG().getPCG().eval().nodes().contains(node))
 				return function;
@@ -162,7 +164,7 @@ public class MatchingPair {
 		return null;
 	}
 	
-	public void setPath(List<Node> path) {
+	public void setPath(AtlasList<Node> path) {
 		this.path = path;
 	}
 	
@@ -243,7 +245,7 @@ public class MatchingPair {
 		return "\t\tMatching Pair [" + (this.getResult() == null ? "UNKNOWN" : this.getResult().toString()) + "]:" + this.getFirstEvent().getAttr(XCSG.name) + " >>> " + this.getSecondEvent() == null ? "NULL" : (String)this.getSecondEvent().getAttr(XCSG.name);
 	}
 	
-	private AtlasList<Node> getPathContainingNode(FeasibilityChecker feasibilityChecker, HashMap<Node, FunctionSummary> summaries) {
+	private AtlasList<Node> getPathContainingNode(FeasibilityChecker feasibilityChecker, AtlasMap<Node, FunctionSummary> summaries) {
 		Node[] nodes = this.getEventsWithRespectToFirstEvent(summaries);
 		ArrayList<AtlasList<Node>> allPaths = feasibilityChecker.getPathsContainingNodes(this.getFirstEvent(), nodes[1], this.excludedNodes);
 		if(allPaths.size() == 1 || !this.getFirstEvent().tags().contains(XCSG.ControlFlowCondition)){

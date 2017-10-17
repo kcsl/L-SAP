@@ -19,10 +19,12 @@ import com.ensoftcorp.atlas.core.markup.MarkupProperty;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
+import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 import com.ensoftcorp.atlas.ui.viewer.graph.SaveUtil;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.ensoftcorp.open.pcg.common.PCGFactory;
+import com.kcsl.lsap.VerificationProperties;
 import com.kcsl.lsap.core.MatchingPair;
 import com.kcsl.lsap.utils.DOTGraphUtils;
 import com.kcsl.lsap.utils.LSAPUtils;
@@ -40,6 +42,13 @@ public class LockVerificationGraphsGenerator {
 	 */
 	private static final String LOCK_GRAPH_DIRECTORY_NAME_PATTERN = "%s@@@%s@@@%s@@@%s";
 	
+	/**
+	 * The name pattern for MPG graph associated with the signature for the processed lock.
+	 * <p>
+	 * The following is the parts of the name:
+	 * 1- The prefix for the graph name which is hard coded as "mpg".
+	 * 2- The extension for the file.
+	 */
 	private static final String MPG_GRAPH_FILE_NAME_PATTERN = "mpg%s";
 	
 	/**
@@ -51,6 +60,7 @@ public class LockVerificationGraphsGenerator {
 	 * 3- The number of nodes in this CFG.
 	 * 4- The number of edges in this CFG.
 	 * 5- The number of conditions in this CFG.
+	 * 6- The extension for the file.
 	 */
 	private static final String CFG_GRAPH_FILE_NAME_PATTERN = "CFG@@@%s@@@%s@@@%s@@@%s@@@%s%s";
 	
@@ -63,6 +73,7 @@ public class LockVerificationGraphsGenerator {
 	 * 3- The number of nodes in this PCG.
 	 * 4- The number of edges in this PCG.
 	 * 5- The number of conditions in this PCG.
+	 * 6- The extension for the file.
 	 */
 	private static final String PCG_GRAPH_FILE_NAME_PATTERN = "PCG@@@%s@@@%s@@@%s@@@%s@@@%s%s";
 	
@@ -92,10 +103,13 @@ public class LockVerificationGraphsGenerator {
 	 */
 	private File currentLockGraphsOutputDirectory;
 	
-	public enum STATUS {
-		PAIRED, PARTIALLY_PAIRED, DEADLOCK, UNPAIRED
-	}
-	
+	/**
+	 * Constructs a new instance of {@link LockVerificationGraphsGenerator}.
+	 * @param signtureNode See corresponding field for details.
+	 * @param mpg See corresponding field for details.
+	 * @param matchingPairs See corresponding field for details.
+	 * @param graphsOutputDirectoryPath See corresponding field for details.
+	 */
 	public LockVerificationGraphsGenerator(Node signtureNode, Q mpg, AtlasMap<Node, HashSet<MatchingPair>> matchingPairs, Path graphsOutputDirectoryPath) {
 		this.signtureNode = signtureNode;
 		this.mpg = mpg;
@@ -103,14 +117,14 @@ public class LockVerificationGraphsGenerator {
 		this.graphsOutputDirectory = graphsOutputDirectoryPath;
 	}
 	
-	public void process(Node lock, STATUS status){
+	public void process(Node lock, VerificationStatus status, boolean displayGraphs){
 		// STEP 1: CREATE A LOCK FOLDER
 		if(!this.createContainingDirectory(lock, status)){
 			return;
 		}
 		
 		AtlasSet<Node> unlocks = new AtlasHashSet<Node>();
-		if(!status.equals(STATUS.UNPAIRED)){
+		if(!status.equals(VerificationStatus.UNPAIRED)){
 			HashSet<MatchingPair> matchingPairs = this.pairs.get(lock);
 			for(MatchingPair pair : matchingPairs){
 				Node unlock = pair.getSecondEvent();
@@ -122,7 +136,7 @@ public class LockVerificationGraphsGenerator {
 		
 		// STEP 2: CREATE THE MPG FILE FOR THE LOCK
 		Q mpgForLock = Common.empty();
-		if(status.equals(STATUS.UNPAIRED)){
+		if(status.equals(VerificationStatus.UNPAIRED)){
 			Node containingFunctionNode = CommonQueries.getContainingFunction(lock);
 			mpgForLock = this.mpg.forward(Common.toQ(containingFunctionNode));	
 		}else{
@@ -130,6 +144,11 @@ public class LockVerificationGraphsGenerator {
 		}
 		mpgForLock = mpgForLock.retainEdges();
 		Graph mpgGraph = mpgForLock.eval();
+		
+		if(displayGraphs){
+			DisplayUtil.displayGraph(mpgGraph);
+		}
+		
 		if(VerificationProperties.saveGraphsInDotFormat()){
 			com.alexmerz.graphviz.objects.Graph mpgDotGraph = DOTGraphUtils.dotify(mpgGraph.nodes(), mpgGraph.edges(), null);
 			String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphDotFileNameExtension());
@@ -157,7 +176,7 @@ public class LockVerificationGraphsGenerator {
 			Graph cfgGraph = cfg.eval();			
 			
 			ArrayList<Q> results = null;
-			if(status.equals(STATUS.DEADLOCK)){
+			if(status.equals(VerificationStatus.DEADLOCK)){
 			    results = this.getEventNodesForCFG(cfg, Common.toQ(lock).union(Common.toQ(unlocks)), Common.empty() , mpgFunctionsQ);
 			}else{
 				results = this.getEventNodesForCFG(cfg, Common.toQ(lock), Common.toQ(unlocks), mpgFunctionsQ);
@@ -176,6 +195,10 @@ public class LockVerificationGraphsGenerator {
 			long nodes = cfgGraph.nodes().size();
 			long edges = cfgGraph.edges().size();
 			long conditions = cfgGraph.nodes().tagged(XCSG.ControlFlowCondition).size();
+			
+			if(displayGraphs){
+				DisplayUtil.displayGraph(markup, cfgGraph);
+			}
 			
 			if(VerificationProperties.saveGraphsInDotFormat()){
 				com.alexmerz.graphviz.objects.Graph cfgDotGraph = DOTGraphUtils.dotify(cfgGraph.nodes(), cfgGraph.edges(), markup);
@@ -201,6 +224,11 @@ public class LockVerificationGraphsGenerator {
 					conditions++;
 				}
 			}
+			
+			if(displayGraphs){
+				DisplayUtil.displayGraph(markup, pcgGraph);
+			}
+			
 			if(VerificationProperties.saveGraphsInDotFormat()){
 				com.alexmerz.graphviz.objects.Graph efgDotGraph = DOTGraphUtils.dotify(pcgGraph.nodes(), pcgGraph.edges(), markup);
 				String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
@@ -214,30 +242,14 @@ public class LockVerificationGraphsGenerator {
 		}
 	}
 	
-	private boolean createContainingDirectory(Node lock, STATUS status){
+	private boolean createContainingDirectory(Node lock, VerificationStatus status){
 		SourceCorrespondence sourceCorrespondence = (SourceCorrespondence) lock.getAttr(XCSG.sourceCorrespondence);
 		String sourceCorrespondenceString = "<external>";
 		if(sourceCorrespondence != null){
 			sourceCorrespondenceString = this.fixSlashes(sourceCorrespondence.toString());
 		}
-		
-		String folderPrefix = "";
-		switch(status){
-		case PAIRED:
-			folderPrefix = "PAIRED";
-			break;
-		case PARTIALLY_PAIRED:
-			folderPrefix = "PARTIALLY";
-			break;
-		case DEADLOCK:
-			folderPrefix = "DEADLOCK";
-			break;
-		case UNPAIRED:
-			folderPrefix = "UNPAIRED";
-			break;
-		}
 
-		String containingDirectoryName = String.format(LOCK_GRAPH_DIRECTORY_NAME_PATTERN, folderPrefix, lock.addressBits(), sourceCorrespondenceString, this.signtureNode.getAttr(XCSG.name).toString());
+		String containingDirectoryName = String.format(LOCK_GRAPH_DIRECTORY_NAME_PATTERN, status.getStatusString(), lock.addressBits(), sourceCorrespondenceString, this.signtureNode.getAttr(XCSG.name).toString());
 		this.currentLockGraphsOutputDirectory = this.graphsOutputDirectory.resolve(containingDirectoryName).toFile();
 		if(!this.currentLockGraphsOutputDirectory.mkdir()){
 			Log.info("Cannot create directory:" + this.currentLockGraphsOutputDirectory.getAbsolutePath());
@@ -300,8 +312,34 @@ public class LockVerificationGraphsGenerator {
 		return results;
 	}
 	
+	/**
+	 * Replaces the '/' with '@' for proper escaping when embedding within a filename.
+	 * 
+	 * @param string A string to be escaped.
+	 * @return An escaped string from the passed <code>string</code>.
+	 */
 	private String fixSlashes(String string){
 		return string.replace('/', '@');
+	}
+	
+	/**
+	 * An enumeration for the verification status.
+	 */
+	public enum VerificationStatus {
+		PAIRED("PAIRED"), // If the lock is verified on all paths.
+		PARTIALLY_PAIRED("PARTIALLY"), // If there exists a path where the lock is not paired with unlock, but other paths contain pairing of that lock.
+		DEADLOCK("DEADLOCK"), // If the lock is followed by another lock.
+		UNPAIRED("UNPAIRED"); // If the lock is not paired with any unlock on all paths.
+		
+		private String statusString;
+		
+		VerificationStatus(String statusString){
+			this.statusString = statusString;
+		}
+		
+		public String getStatusString(){
+			return this.statusString;
+		}
 	}
 	
 }

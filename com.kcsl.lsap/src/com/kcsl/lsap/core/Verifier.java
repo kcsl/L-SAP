@@ -16,13 +16,26 @@ import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
-import com.kcsl.lsap.core.LockVerificationGraphsGenerator.STATUS;
+import com.kcsl.lsap.VerificationProperties;
+import com.kcsl.lsap.core.LockVerificationGraphsGenerator.VerificationStatus;
 import com.kcsl.lsap.core.MatchingPair.VerificationResult;
 import com.kcsl.lsap.utils.LSAPUtils;
 
 public class Verifier {
+	
+	/**
+	 * An instance of {@link Path} corresponding to the root output directory where the verification graphs will be saved.
+	 */
 	private Path graphsOutputDirectoryPath;
+	
+	/**
+	 * An instance of {@link Node} for the signature.
+	 */
 	private Node signatureNode;
+	
+	/**
+	 * A {@link String} representing a unique verification id for debugging purposed.
+	 */
 	private String verificationInstanceId;
 	
 	/**
@@ -34,25 +47,78 @@ public class Verifier {
 	 * An MPG without the leaves of the {@link #fullMpg}.
 	 */
 	private Q mpg;
-	private HashMap<Node, PCG> functionsPCGMap;
-	private HashMap<Node, List<Q>> functionEventsMap;
-	private HashMap<Node, FunctionSummary> summaries;
-	private HashMap<Node, Boolean> mayEventsFeasibility;
+	
+	/**
+	 * A mapping of {@link Node} corresponding to an {@link XCSG#Function} to its {@link PCG} instance.
+	 */
+	private AtlasMap<Node, PCG> functionsPCGMap;
+	
+	/**
+	 * A mapping of {@link Node} corresponding to an {@link XCSG#Function} to its set of events in the CFG and PCG graphs.
+	 */
+	private AtlasMap<Node, List<Q>> functionEventsMap;
+	
+	/**
+	 * A mapping of {@link Node} corresponding to an {@link XCSG#Function} to its {@link FunctionSummary} instance.
+	 */
+	private AtlasMap<Node, FunctionSummary> summaries;
+	
+	/**
+	 * A mapping of {@link Node} corresponding to multi-state lock node to whether the true branch where the lock occurs.
+	 */
+	private AtlasMap<Node, Boolean> mayEventsFeasibility;
+	
+	/**
+	 * A mapping of {@link Node} corresponding to a lock function call to a set of its {@link MatchingPair}s.
+	 */
 	public AtlasMap<Node, HashSet<MatchingPair>> matchingPairsMap;
 	
 	/**
-	 * Data structures to save LOCK results
+	 * A list of {@link Node}s corresponding to verified locks.
 	 */
 	private AtlasSet<Node> verifiedLocks;
+	
+	/**
+	 * A list of {@link Node}s corresponding to dangling locks (not paired locks).
+	 */
 	private AtlasSet<Node> danglingLocks;
-	private AtlasSet<Node> doubleLocks;
+	
+	/**
+	 * A list of {@link Node}s corresponding to deadlocked locks.
+	 */
+	private AtlasSet<Node> deadlockedLocks;
+	
+	/**
+	 * A list of {@link Node}s corresponding to partially verified locks.
+	 */
 	private AtlasSet<Node> partiallyLocks;
 	
-	private AtlasSet<Node> e1Events;
-	private AtlasSet<Node> e2Events;
-	private AtlasSet<Node> e1MayEvents;
+	/**
+	 * A set of {@link Node}s corresponding to all lock function calls in this {@link #mpg}.
+	 */
+	private AtlasSet<Node> lockFunctionCallEvents;
 	
-	public Verifier(Node signatureNode, Q mpg, HashMap<Node, PCG> functionsPCGMap, HashMap<Node, List<Q>> functionEventsMap, HashMap<Node, Boolean> mayEventsFeasibility, Path graphsOutputDirectoryPath){
+	/**
+	 * A set of {@link Node}s corresponding to all unlock function calls in this {@link #mpg}.
+	 */
+	private AtlasSet<Node> unlockFunctionCallEvents;
+	
+	/**
+	 * A set of {@link Node}s corresponding to all lock function calls in this {@link #mpg} that are multi-state.
+	 */
+	private AtlasSet<Node> multiStateLockFunctionCallEvents;
+	
+	/**
+	 * Constructs a new instance of {@link Verifier}.
+	 * 
+	 * @param signatureNode See corresponding field for details.
+	 * @param mpg See corresponding field for details.
+	 * @param functionsPCGMap See corresponding field for details.
+	 * @param functionEventsMap See corresponding field for details.
+	 * @param mayEventsFeasibility See corresponding field for details.
+	 * @param graphsOutputDirectoryPath See corresponding field for details.
+	 */
+	public Verifier(Node signatureNode, Q mpg, AtlasMap<Node, PCG> functionsPCGMap, AtlasMap<Node, List<Q>> functionEventsMap, AtlasMap<Node, Boolean> mayEventsFeasibility, Path graphsOutputDirectoryPath){
 		this.signatureNode = signatureNode;
 		this.verificationInstanceId = this.signatureNode.getAttr(XCSG.name) + "(" + this.signatureNode.addressBits() + ")";;
 		this.fullMpg = mpg;
@@ -61,19 +127,34 @@ public class Verifier {
 		this.functionEventsMap = functionEventsMap;
 		this.mayEventsFeasibility = mayEventsFeasibility;
 		this.matchingPairsMap = new AtlasGraphKeyHashMap<Node, HashSet<MatchingPair>>();
-		this.summaries = new HashMap<Node, FunctionSummary>();
-		
+		this.summaries = new AtlasGraphKeyHashMap<Node, FunctionSummary>();
 		this.verifiedLocks = new AtlasHashSet<Node>();
 		this.danglingLocks = new AtlasHashSet<Node>();
-		this.doubleLocks = new AtlasHashSet<Node>();
+		this.deadlockedLocks = new AtlasHashSet<Node>();
 		this.partiallyLocks = new AtlasHashSet<Node>();
-		
-		this.e1Events = new AtlasHashSet<Node>();
-		this.e1MayEvents = new AtlasHashSet<Node>();
-		this.e2Events = new AtlasHashSet<Node>();
+		this.lockFunctionCallEvents = new AtlasHashSet<Node>();
+		this.multiStateLockFunctionCallEvents = new AtlasHashSet<Node>();
+		this.unlockFunctionCallEvents = new AtlasHashSet<Node>();
 		this.graphsOutputDirectoryPath = graphsOutputDirectoryPath;
 	}
 	
+	/**
+	 * Verifies all the locks in {@link #mpg} and stores the verification results.
+	 * 
+	 * @return An instance of {@link Reporter} that contains all stats about the verification process.
+	 */
+	public Reporter verify(){
+		return this.verify(null);
+	}
+	
+	/**
+	 * Verifies all the locks in {@link #mpg} and stores the verification results.
+	 * <p>
+	 * If the <code>lockNode</code> is not null, then only the verification graphs for that <code>lockNode</code> will be stored and displayed to the user.
+	 * 
+	 * @param lockNode The {@link Node} corresponding to a lock function call.
+	 * @return An instance of {@link Reporter} that contains all stats about the verification process.
+	 */
 	public Reporter verify(Node lockNode){
 		LSAPUtils.log("MPG has ["+ this.mpg.eval().nodes().size() +"] nodes.");
 		Reporter reporter = new Reporter();
@@ -85,7 +166,7 @@ public class Verifier {
 			LSAPUtils.log("Generating Summary For Function:" + function.attr().get(XCSG.name));
 			long outDegree = this.mpg.successors(Common.toQ(function)).eval().nodes().size();
 			LSAPUtils.log("Function's outdegree:" + outDegree);
-			this.summaries.put(function, this.summarizeAndVerifyFunction(function));
+			this.summaries.put(function, this.constructFunctionSummary(function));
 		}
 		
 		this.aggregateVerificationResults(reporter);
@@ -98,47 +179,13 @@ public class Verifier {
 		return reporter;
 	}
 	
-	private void saveLockVerificationGraphs(Node lockNode){
-		Q verifiedLocks = Common.toQ(this.verifiedLocks);
-		Q doubleLocks = Common.toQ(this.doubleLocks);
-		Q danglingLocks = Common.toQ(this.danglingLocks);
-		Q partiallyLocks = Common.toQ(this.partiallyLocks);
-		
-		LockVerificationGraphsGenerator lockVerificationGraphsGenerator = new LockVerificationGraphsGenerator(this.signatureNode, this.fullMpg, this.matchingPairsMap, this.graphsOutputDirectoryPath);
-		
-		// A paired lock is never partially paired or unpaired or deadlock
-		Q pairedLocks = verifiedLocks.difference(partiallyLocks, danglingLocks, doubleLocks);
-		for(Node lock : pairedLocks.eval().nodes()){
-			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, STATUS.PAIRED);
-			}
-		}
-		
-		// A partially paired lock should not be a deadlock
-		Q partiallyPairedLocks = partiallyLocks.difference(doubleLocks);
-		for(Node lock : partiallyPairedLocks.eval().nodes()){
-			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, STATUS.PARTIALLY_PAIRED);
-			}
-		}
-		
-		// A deadlock lock is only if it has deadlock
-		for(Node lock : this.doubleLocks){
-			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, STATUS.DEADLOCK);
-			}
-		}
-		
-		// An unpaired lock cannot be partially paired or paired
-		Q unpairedLocks = danglingLocks.difference(verifiedLocks, partiallyLocks);
-		for(Node lock : unpairedLocks.eval().nodes()){
-			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, STATUS.UNPAIRED);
-			}
-		}
-	}
-
-	public FunctionSummary summarizeAndVerifyFunction(Node function){
+	/**
+	 * Constructs an instance of {@link FunctionSummary} for the given <code>function</code>.
+	 * 
+	 * @param function An instance of {@link Node} corresponding to an {@link XCSG#Function}.
+	 * @return an instance of {@link FunctionSummary} for the given <code>function</code>.
+	 */
+	private FunctionSummary constructFunctionSummary(Node function){
 		PCG pcg = this.functionsPCGMap.get(function);
 		List<Q> events = this.functionEventsMap.get(function);
 		
@@ -149,9 +196,9 @@ public class Verifier {
 		
 		FunctionVerifier functionVerifier = new FunctionVerifier(function, pcg, successorFunctionSummaries);	
 		FunctionSummary summary = functionVerifier.run(events);
-		this.e1Events.addAll(summary.getE1Events());
-		this.e1MayEvents.addAll(summary.getE1MayEvents());
-		this.e2Events.addAll(summary.getE2Events());
+		this.lockFunctionCallEvents.addAll(summary.getE1Events());
+		this.multiStateLockFunctionCallEvents.addAll(summary.getE1MayEvents());
+		this.unlockFunctionCallEvents.addAll(summary.getE2Events());
 		
 		for(Node node : summary.getMatchingPairsMap().keySet()){
 			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
@@ -165,9 +212,14 @@ public class Verifier {
 		return summary;
 	}
 	
+	/**
+	 * Aggregates all the verification results and logs important information using <code>reporter</code>.
+	 * 
+	 * @param reporter An instance of {@link Reporter} to be used for aggregating verification stats.
+	 */
 	private void aggregateVerificationResults(Reporter reporter){
-		reporter.setLockEvents(this.e1Events);
-		reporter.setUnlockEvents(this.e2Events);
+		reporter.setLockEvents(this.lockFunctionCallEvents);
+		reporter.setUnlockEvents(this.unlockFunctionCallEvents);
 		
 		int outStatus;
 		for(Node function : this.summaries.keySet()){
@@ -179,8 +231,8 @@ public class Verifier {
 			}
 		}
 		
-		if(this.matchingPairsMap.keySet().size() != this.e1Events.size()){
-			LSAPUtils.log("The matching pair map contains [" + this.matchingPairsMap.size() + "] while the size of e1Events is [" + this.e1Events.size() + "]!");
+		if(this.matchingPairsMap.keySet().size() != this.lockFunctionCallEvents.size()){
+			LSAPUtils.log("The matching pair map contains [" + this.matchingPairsMap.size() + "] while the size of e1Events is [" + this.lockFunctionCallEvents.size() + "]!");
 		}
 		
 		AtlasSet<Node> danglingE1Events = new AtlasHashSet<Node>();
@@ -194,7 +246,7 @@ public class Verifier {
 			HashSet<MatchingPair> pairs = this.matchingPairsMap.get(e1Event);
 			int count = 0;
 			for(MatchingPair pair : pairs){
-				pair.verify(this.e1Events, this.e2Events, this.mayEventsFeasibility, this.summaries);
+				pair.verify(this.lockFunctionCallEvents, this.unlockFunctionCallEvents, this.mayEventsFeasibility, this.summaries);
 				LSAPUtils.log((++count) + pair.toString());
 				switch(pair.getResult()){
 				case DANGLING_LOCK:
@@ -237,7 +289,7 @@ public class Verifier {
 		actualRacedEvents = Common.toQ(actualRacedEvents).difference(Common.toQ(partiallyVerifiedE1Events)).eval().nodes();
 		reporter.setOnlyDeadlockedLockEvents(actualRacedEvents);
 		
-		this.doubleLocks.addAll(doubleE1Events);
+		this.deadlockedLocks.addAll(doubleE1Events);
 		
 		reporter.setDanglingLockEvents(danglingE1Events);
 		AtlasSet<Node> actualDanglingEvents = new AtlasHashSet<Node>(danglingE1Events);
@@ -250,7 +302,7 @@ public class Verifier {
 		reporter.printResults("[" + this.verificationInstanceId + "]");
 		
 		AtlasSet<Node> missingE1Events = new AtlasHashSet<Node>();
-		for(Node node : this.e1Events){
+		for(Node node : this.lockFunctionCallEvents){
 			missingE1Events.add(node);
 		}
 		AtlasSet<Node> keys = new AtlasHashSet<Node>();
@@ -301,6 +353,47 @@ public class Verifier {
 		}
 	}
 	
+	private void saveLockVerificationGraphs(Node lockNode){
+		boolean displayGraphs = lockNode != null;
+		Q verifiedLocks = Common.toQ(this.verifiedLocks);
+		Q doubleLocks = Common.toQ(this.deadlockedLocks);
+		Q danglingLocks = Common.toQ(this.danglingLocks);
+		Q partiallyLocks = Common.toQ(this.partiallyLocks);
+		
+		LockVerificationGraphsGenerator lockVerificationGraphsGenerator = new LockVerificationGraphsGenerator(this.signatureNode, this.fullMpg, this.matchingPairsMap, this.graphsOutputDirectoryPath);
+		
+		// A paired lock is never partially paired or unpaired or deadlock
+		Q pairedLocks = verifiedLocks.difference(partiallyLocks, danglingLocks, doubleLocks);
+		for(Node lock : pairedLocks.eval().nodes()){
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PAIRED, displayGraphs);
+			}
+		}
+		
+		// A partially paired lock should not be a deadlock
+		Q partiallyPairedLocks = partiallyLocks.difference(doubleLocks);
+		for(Node lock : partiallyPairedLocks.eval().nodes()){
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PARTIALLY_PAIRED, displayGraphs);
+			}
+		}
+		
+		// A deadlock lock is only if it has deadlock
+		for(Node lock : this.deadlockedLocks){
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.DEADLOCK, displayGraphs);
+			}
+		}
+		
+		// An unpaired lock cannot be partially paired or paired
+		Q unpairedLocks = danglingLocks.difference(verifiedLocks, partiallyLocks);
+		for(Node lock : unpairedLocks.eval().nodes()){
+			if(lockNode == null || lockNode.equals(lock)){
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.UNPAIRED, displayGraphs);
+			}
+		}
+	}
+	
 	private void appendMatchingPairs(AtlasSet<Node> nodes){
 		for(Node node : nodes){
 			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
@@ -347,20 +440,5 @@ public class Verifier {
 			}
 		}
 	}
-	
-	public AtlasSet<Node> getVerifiedLockEvents(){
-		return this.verifiedLocks;
-	}
-	
-	public AtlasSet<Node> getDanglingLockEvents(){
-		return this.danglingLocks;
-	}
-	
-	public AtlasSet<Node> getDeadlockedLockEvents(){
-		return this.doubleLocks;
-	}
-	
-	public AtlasSet<Node> getPartiallyVerifiedLockEvents(){
-		return this.partiallyLocks;
-	}
+
 }

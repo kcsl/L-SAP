@@ -10,13 +10,11 @@ public class PathStatus
     final public static int START = 16;
     final public static int ERROR = 32;
     
-    public static String PathStatusToText(int value)
-    {
+    public static String PathStatusToText(int value){
     	String ret = "";
     	if(value == UNKNOWN)
     		ret = "UNKNOWN,";
-    	else
-    	{
+    	else{
             if((value | MATCH) == value)
                 ret += "MATCH,";
             if((value | LOCK) == value)

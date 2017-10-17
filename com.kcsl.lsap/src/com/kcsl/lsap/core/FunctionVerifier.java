@@ -8,6 +8,8 @@ import java.util.List;
 
 import com.ensoftcorp.atlas.core.db.graph.Graph;
 import com.ensoftcorp.atlas.core.db.graph.Node;
+import com.ensoftcorp.atlas.core.db.map.AtlasGraphKeyHashMap;
+import com.ensoftcorp.atlas.core.db.map.AtlasMap;
 import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
@@ -15,6 +17,7 @@ import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.pcg.common.PCG;
+import com.kcsl.lsap.VerificationProperties;
 import com.kcsl.lsap.utils.LSAPUtils;
 
 public class FunctionVerifier {
@@ -27,7 +30,7 @@ public class FunctionVerifier {
 	private AtlasSet<Node> e2EventNodes;
     private Node entryNode;
     private Node exitNode;
-    private HashMap<Node, ArrayList<MatchingPair>> matchingPairsMap;
+    private AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap;
 	
 	private HashMap<Node, Integer> pathToS;
 	private HashMap<Node, Integer> pathBackS;
@@ -39,7 +42,7 @@ public class FunctionVerifier {
 		this.currentFunction = function;
 		this.childrenFunctionSummaries = summary;
 		this.pcg = pcg;
-		this.matchingPairsMap = new HashMap<Node, ArrayList<MatchingPair>>();
+		this.matchingPairsMap = new AtlasGraphKeyHashMap<Node, ArrayList<MatchingPair>>();
 		
         this.pathToS = new HashMap<Node, Integer>();
         this.pathToE1 = new HashMap<Node, AtlasSet<Node>>();
@@ -53,7 +56,7 @@ public class FunctionVerifier {
 		this.e1EventNodes = events.get(0).eval().nodes();
 		this.e2EventNodes = events.get(1).eval().nodes();
 		
-		HashMap<Node, Node> callEventsFunctionsMap = new HashMap<Node, Node>();
+		AtlasMap<Node, Node> callEventsFunctionsMap = new AtlasGraphKeyHashMap<Node, Node>();
 		
 		HashMap<Node, FunctionSummary> summary = new HashMap<Node, FunctionSummary>();
 		AtlasSet<Node> nodes = events.get(2).eval().nodes();

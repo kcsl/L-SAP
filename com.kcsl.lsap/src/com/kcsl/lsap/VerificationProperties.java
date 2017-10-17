@@ -1,4 +1,4 @@
-package com.kcsl.lsap.core;
+package com.kcsl.lsap;
 
 import static com.ensoftcorp.atlas.core.script.Common.universe;
 

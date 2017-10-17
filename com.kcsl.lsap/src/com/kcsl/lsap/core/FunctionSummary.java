@@ -1,10 +1,10 @@
 package com.kcsl.lsap.core;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import com.ensoftcorp.atlas.core.db.graph.Node;
+import com.ensoftcorp.atlas.core.db.map.AtlasMap;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.ensoftcorp.atlas.core.query.Q;
@@ -14,28 +14,75 @@ import com.ensoftcorp.open.pcg.common.PCG;
 import com.kcsl.lsap.feasibility.FeasibilityChecker;
 import com.kcsl.lsap.utils.LSAPUtils;
 
+/**
+ * A class corresponding to the function summary for a function.
+ */
 public class FunctionSummary {
 
+	/**
+	 * The {@link Node} for the {@link XCSG#Function} which this instance belongs to.
+	 */
 	private Node function;
-	private PCG pcg;
-	private List<Q> allEvents;
-	private AtlasSet<Node> e1Events;
-	private AtlasSet<Node> e2Events;
-	private AtlasSet<Node> e1MayEvents;
-	private AtlasSet<Node> callEvents;
 	
+	/**
+	 * The {@link PCG} instance associated with this instance.
+	 */
+	private PCG pcg;
+	
+	/**
+	 * A list of {@link Q}s for the different events of interest in this {@link #function} graphs.
+	 */
+	private List<Q> allEvents;
+	
+	/**
+	 * A set of {@link Node}s corresponding to all lock function calls in this {@link #function}.
+	 */
+	private AtlasSet<Node> lockFunctionCallEvents;
+	
+	/**
+	 * A set of {@link Node}s corresponding to all unlock function calls in this {@link #function}.
+	 */
+	private AtlasSet<Node> unlockFunctionCallEvents;
+	
+	/**
+	 * A set of {@link Node}s corresponding to all lock function calls in this {@link #function} and have multi-state.
+	 */
+	private AtlasSet<Node> multiStateLockFunctionCallEvents;
+	
+	/**
+	 * A set of {@link Node}s corresponding to all call-sites function calls in this {@link #function} that eventually call lock/unlock.
+	 */
+	private AtlasSet<Node> callSiteEvents;
+	
+	/**
+	 * A {@link Node} corresponding to the entry node for the {@link PCG} instance.
+	 */
 	private Node entryNode;
+	
+	/**
+	 * A {@link Node} corresponding to the exit node for the {@link PCG} instance.
+	 */
 	private Node exitNode;
 	
-	private HashMap<Node, Node> callEventsFunctionsMap;
+	/**
+	 * A mapping between a callsite {@link Node} and its corresponding {@link XCSG#Function} node.
+	 */
+	private AtlasMap<Node, Node> callEventsFunctionsMap;
 	
+	/**
+	 * An instance of {@link FeasibilityChecker} to perform feasibility operations.
+	 */
 	private FeasibilityChecker feasibilityChecker;
 	
 	private int rets;
 	private AtlasSet<Node> retl;
 	private int outs;
 	private AtlasSet<Node> outl;
-	private HashMap<Node, ArrayList<MatchingPair>> matchingPairsMap;
+	
+	/**
+	 * A mapping of {@link Node} corresponding to a lock function call to a set of its {@link MatchingPair}s.
+	 */
+	private AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap;
 
 	public FunctionSummary(Node function, PCG pcg, List<Q> events) {
 		this.setFunction(function);
@@ -54,40 +101,40 @@ public class FunctionSummary {
 		return this.callEventsFunctionsMap.get(node);
 	}
 	
-	public HashMap<Node, Node> getCallEventsFunctionsMap(){
+	public AtlasMap<Node, Node> getCallEventsFunctionsMap(){
 		return this.callEventsFunctionsMap;
 	}
 
 	public AtlasSet<Node> getE1Events() {
-		return e1Events;
+		return lockFunctionCallEvents;
 	}
 
 	public void setE1Events(AtlasSet<Node> e1Events) {
-		this.e1Events = e1Events;
+		this.lockFunctionCallEvents = e1Events;
 	}
 
 	public AtlasSet<Node> getE2Events() {
-		return e2Events;
+		return unlockFunctionCallEvents;
 	}
 
 	public void setE2Events(AtlasSet<Node> e2Events) {
-		this.e2Events = e2Events;
+		this.unlockFunctionCallEvents = e2Events;
 	}
 
 	public AtlasSet<Node> getE1MayEvents() {
-		return e1MayEvents;
+		return multiStateLockFunctionCallEvents;
 	}
 
 	public void setE1MayEvents(AtlasSet<Node> e1MayEvents) {
-		this.e1MayEvents = e1MayEvents;
+		this.multiStateLockFunctionCallEvents = e1MayEvents;
 	}
 
 	public AtlasSet<Node> getCallEvents() {
-		return callEvents;
+		return callSiteEvents;
 	}
 
 	public void setCallEvents(AtlasSet<Node> callEvents) {
-		this.callEvents = callEvents;
+		this.callSiteEvents = callEvents;
 	}
 
 	public Node getEntryNode() {
@@ -114,19 +161,8 @@ public class FunctionSummary {
 		this.function = function;
 	}
 	
-	public void setCallEventsFunctionsMap(HashMap<Node, Node> callEventsFunctionsMap) {
+	public void setCallEventsFunctionsMap(AtlasMap<Node, Node> callEventsFunctionsMap) {
 		this.callEventsFunctionsMap = callEventsFunctionsMap;
-	}
-	
-	@Override
-	public String toString() {
-		StringBuilder result = new StringBuilder();
-		result.append("#######################################################################\n");
-		result.append("FunctionSummary for [" + this.getFunction().getAttr(XCSG.name) + "]\n");
-		result.append("E1 Events: [" + LSAPUtils.serialize(this.getE1Events()) + "]\n");
-		result.append("E2 Events: [" + LSAPUtils.serialize(this.getE2Events()) + "]\n");
-		result.append("#######################################################################\n");
-		return result.toString();
 	}
 
 	public FeasibilityChecker getFeasibilityChecker() {
@@ -180,15 +216,15 @@ public class FunctionSummary {
 		this.outs = outs;
 	}
 
-	public void setMatchingPairsList(HashMap<Node, ArrayList<MatchingPair>> matchingPairsMap) {
+	public void setMatchingPairsList(AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap) {
 		this.setMatchingPairsMap(matchingPairsMap);
 	}
 
-	public HashMap<Node, ArrayList<MatchingPair>> getMatchingPairsMap() {
+	public AtlasMap<Node, ArrayList<MatchingPair>> getMatchingPairsMap() {
 		return matchingPairsMap;
 	}
 
-	public void setMatchingPairsMap(HashMap<Node, ArrayList<MatchingPair>> matchingPairsMap) {
+	public void setMatchingPairsMap(AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap) {
 		this.matchingPairsMap = matchingPairsMap;
 	}
 
@@ -199,4 +235,16 @@ public class FunctionSummary {
 	public void setAllEvents(List<Q> allEvents) {
 		this.allEvents = allEvents;
 	}
+	
+	@Override
+	public String toString() {
+		StringBuilder result = new StringBuilder();
+		result.append("#######################################################################\n");
+		result.append("FunctionSummary for [" + this.getFunction().getAttr(XCSG.name) + "]\n");
+		result.append("E1 Events: [" + LSAPUtils.serialize(this.getE1Events()) + "]\n");
+		result.append("E2 Events: [" + LSAPUtils.serialize(this.getE2Events()) + "]\n");
+		result.append("#######################################################################\n");
+		return result.toString();
+	}
+	
 }
