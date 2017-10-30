@@ -8,11 +8,10 @@ Bundle-Vendor: KCSL
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  com.ensoftcorp.atlas.ui.shell;bundle-version="3.1.7",
- com.ensoftcorp.open.c.commons;bundle-version="3.1.7",
  com.ensoftcorp.open.commons;bundle-version="3.1.7",
  com.ensoftcorp.open.pcg;bundle-version="3.1.7",
  net.sf.javabdd;bundle-version="1.0.0",
- org.jgrapht;bundle-version="1.0.1",
- com.alexmerz.graphviz;bundle-version="1.0.0"
+ com.alexmerz.graphviz;bundle-version="1.0.0",
+ com.ensoftcorp.atlas.c.core;bundle-version="3.1.7"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
