@@ -23,6 +23,7 @@ import com.ensoftcorp.atlas.core.index.common.SourceCorrespondence;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
+import com.ensoftcorp.open.commons.analysis.CallSiteAnalysis;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.kcsl.lsap.VerificationProperties;
 
@@ -77,6 +78,18 @@ public class LSAPUtils {
 		return stringBuilder.toString();
 	}
 	
+	public static Q getContainingNodes(Q nodes, String containingTag) {
+		AtlasSet<Node> nodeSet = nodes.eval().nodes();
+		AtlasSet<Node> containingMethods = new AtlasHashSet<Node>();
+		for (Node currentNode : nodeSet) {
+			Node function = CommonQueries.getContainingNode(currentNode, containingTag);
+			if (function != null){
+				containingMethods.add(function);
+			}
+		}
+		return Common.toQ(Common.toGraph(containingMethods));
+	}
+	
 	public static AtlasList<Edge> findDirectEdgesBetweenNodes(Graph graph, Node from, Node to){
 		AtlasList<Edge> result = new AtlasArrayList<Edge>();
 		AtlasSet<Edge> edges = graph.edges(from, NodeDirection.OUT);
@@ -95,19 +108,22 @@ public class LSAPUtils {
 		return cfg.differenceEdges(cfgBackEdges);
 	}
 	
-	public static Q mpg(Q callSites, List<String> lockFunctionCalls, List<String> unlockFunctionCalls){
+	public static Q mpg(Q callSites, Q lockFunctionCallsQ, Q unlockFunctionCallsQ){
 		AtlasSet<Node> callSitesNodes = callSites.eval().nodes();
 		HashMap<Node, HashMap<String, AtlasSet<Node>>> functionMap = new HashMap<Node, HashMap<String,AtlasSet<Node>>>(); 
 		for(Node node : callSitesNodes){
+			Node targetForCallSite = CallSiteAnalysis.getTargets(node).one();
+			Q targetForCallSiteQ = Common.toQ(targetForCallSite);
+			
 			Node containingFunctionNode = CommonQueries.getContainingFunction(node);
 			
 			boolean callingLock = false;
 			boolean callingUnlock = false;
-			if(isCallingAnyFunction(node, lockFunctionCalls)){
+			if(!lockFunctionCallsQ.intersection(targetForCallSiteQ).eval().nodes().isEmpty()){
 				callingLock = true;
 			}
 			
-			if(isCallingAnyFunction(node, unlockFunctionCalls)){
+			if(!unlockFunctionCallsQ.intersection(targetForCallSiteQ).eval().nodes().isEmpty()){
 				callingUnlock = true;
 			}
 			
@@ -197,7 +213,7 @@ public class LSAPUtils {
 		Q mpg = rcg_c.intersection(callEdgesContext.forward(ubc));
 		
 		// Filtration for the MPG
-		Q lockUnlockFunctionCallsQ = functionsQ(lockFunctionCalls).union(functionsQ(unlockFunctionCalls));
+		Q lockUnlockFunctionCallsQ = lockFunctionCallsQ.union(unlockFunctionCallsQ);
 		mpg = mpg.union(lockUnlockFunctionCallsQ);
 		mpg = mpg.induce(universe().edges(XCSG.Call));
 		Q toRemoveEdges = mpg.edges(XCSG.Call).forwardStep(lockUnlockFunctionCallsQ).edges(XCSG.Call);
@@ -205,15 +221,6 @@ public class LSAPUtils {
 		Q unused = mpg.roots().intersection(mpg.leaves());
 		mpg = mpg.difference(unused);
 		return mpg;
-	}
-	
-	public static boolean isCallingAnyFunction(Node node, List<String> functions){
-		String nodeName = (String) node.getAttr(XCSG.name);
-		for(String f : functions){
-			if(nodeName.contains(f + "("))
-				return true;
-		}
-		return false;
 	}
 	
 	public static boolean isDirectedAcyclicGraph(Q q){
@@ -305,30 +312,31 @@ public class LSAPUtils {
 		return backEdgeQ;
 	}
 	
-	public static List<Q> compileCFGNodesContainingEventNodes(Q cfg, Q cfgNodesContainingEventsQ, List<String> mpgFunctions, List<String> lockFunctionCalls, List<String> unlockFunctionCalls){
+	public static List<Q> compileCFGNodesContainingEventNodes(Q cfg, Q cfgNodesContainingEventsQ, Q mpgFunctions, Q lockFunctionCalls, Q unlockFunctionCalls){
 		Q cfgNodesQ = cfg.nodes(XCSG.ControlFlow_Node);
 		Q callSitesQ = universe().edges(XCSG.Contains).forward(cfgNodesQ).nodes(XCSG.CallSite);
 		AtlasSet<Node> callSitesNodes = callSitesQ.eval().nodes();
-		
 		Q lockEvents = Common.empty();
 		Q unlockEvents = Common.empty();
 		Q mpgFunctionCallEvents = Common.empty();
 		
 		AtlasSet<Node> cfgNodesContainingEvents = cfgNodesContainingEventsQ.eval().nodes();
 		for(Node node : callSitesNodes){
-			Q controlFlowNode = universe().edges(XCSG.Contains).successors(Common.toQ(node)).nodes(XCSG.ControlFlow_Node);
-			if(cfgNodesContainingEvents.contains(controlFlowNode.eval().nodes().one())){
-				if(LSAPUtils.isCallingAnyFunction(node, lockFunctionCalls)){
-					lockEvents = lockEvents.union(controlFlowNode);
+			Node callSiteTargetFunction = CallSiteAnalysis.getTargets(node).one();
+			Node controlFlowNode = CommonQueries.getContainingControlFlowNode(node);
+			Q controlFlowNodeQ = Common.toQ(controlFlowNode);
+			if(cfgNodesContainingEvents.contains(controlFlowNode)){
+				if(lockFunctionCalls.eval().nodes().contains(callSiteTargetFunction)) {
+					lockEvents = lockEvents.union(controlFlowNodeQ);
 				}
 				
-				if(LSAPUtils.isCallingAnyFunction(node, unlockFunctionCalls)){
-					unlockEvents = unlockEvents.union(controlFlowNode);
+				if(unlockFunctionCalls.eval().nodes().contains(callSiteTargetFunction)){
+					unlockEvents = unlockEvents.union(controlFlowNodeQ);
 				}
 			}
 			
-			if(LSAPUtils.isCallingAnyFunction(node, mpgFunctions)){
-				mpgFunctionCallEvents = mpgFunctionCallEvents.union(controlFlowNode);
+			if(mpgFunctions.eval().nodes().contains(callSiteTargetFunction)){
+				mpgFunctionCallEvents = mpgFunctionCallEvents.union(controlFlowNodeQ);
 			}
 		}
 		List<Q> result = new ArrayList<Q>();

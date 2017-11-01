@@ -14,6 +14,7 @@ import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
+import com.ensoftcorp.open.commons.analysis.CallSiteAnalysis;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.kcsl.lsap.utils.LSAPUtils;
 import com.kcsl.lsap.utils.SignatureVerificationUtils;
@@ -35,8 +36,10 @@ public class LSAP {
 	public static void verifyMutexLocks(){
 		Q mutexObjectType = VerificationProperties.getMutexObjectType();
 		Q signatures = LSAPUtils.getSignaturesForObjectType(mutexObjectType);
-		Path graphsOutputDirectoryPath = VerificationProperties.getSpinGraphsOutputDirectory();
-		SignatureVerificationUtils.verifySignatures(signatures, VerificationProperties.getMutexLockFunctionCalls(), VerificationProperties.getMutexUnlockFunctionCalls(), graphsOutputDirectoryPath);
+		Q lockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getMutexLockFunctionCalls());
+		Q unlockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getMutexUnlockFunctionCalls());
+		Path graphsOutputDirectoryPath = VerificationProperties.getMutexGraphsOutputDirectory();
+		SignatureVerificationUtils.verifySignatures(signatures, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
 	}
 	
 	/**
@@ -45,8 +48,10 @@ public class LSAP {
 	public static void verifySpinLocks(){
 		Q spinObjectType = VerificationProperties.getSpinObjectType();
 		Q signatures = LSAPUtils.getSignaturesForObjectType(spinObjectType);
-		Path graphsOutputDirectoryPath = VerificationProperties.getMutexGraphsOutputDirectory();
-		SignatureVerificationUtils.verifySignatures(signatures, VerificationProperties.getSpinLockFunctionCalls(), VerificationProperties.getSpinUnlockFunctionCalls(), graphsOutputDirectoryPath);
+		Q lockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getSpinLockFunctionCalls());
+		Q unlockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getSpinUnlockFunctionCalls());
+		Path graphsOutputDirectoryPath = VerificationProperties.getSpinGraphsOutputDirectory();
+		SignatureVerificationUtils.verifySignatures(signatures, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
 	}
 	
 	/**
@@ -68,25 +73,29 @@ public class LSAP {
 		unlockFunctionCalls.addAll(VerificationProperties.getSpinUnlockFunctionCalls());
 		Q unlockFunctionCallsQ = LSAPUtils.functionsQ(unlockFunctionCalls);
 
-		Q lockUnlockFunctionCalls = lockFunctionCallsQ.union(unlockFunctionCallsQ);
+		Q lockUnlockFunctionCallsQ = lockFunctionCallsQ.union(unlockFunctionCallsQ);
 		
+		// 1. Find {@link XCSG#CallSite} for <code>lockUnlockFunctionCallsQ</code>.
+		Q lockUnlockFunctionCallSites = CallSiteAnalysis.getCallSites(lockUnlockFunctionCallsQ);
 		Q callsites = universe().edges(XCSG.Contains).forward(lock).nodes(XCSG.CallSite);
-		callsites = universe().edges(XCSG.InvokedFunction).predecessors(lockUnlockFunctionCalls).nodes(XCSG.CallSite).intersection(callsites);
-		Q parameter = universe().edges(XCSG.PassedTo).reverseStep(callsites).selectNode(XCSG.parameterIndex, 0);
+		callsites = callsites.intersection(lockUnlockFunctionCallSites);
+		//callsites = universe().edges(XCSG.InvokedFunction).predecessors(lockUnlockFunctionCallsQ).nodes(XCSG.CallSite).intersection(callsites);
+		Q parameter = universe().edges(XCSG.ParameterPassedTo).predecessors(callsites).selectNode(XCSG.parameterIndex, 0);
+		
 		Q dataFlowEdges = universe().edges(XCSG.DataFlow_Edge, Edge.ADDRESS_OF, Edge.POINTER_DEREFERENCE);
 		Q reverseDataFlow = dataFlowEdges.reverse(parameter);
 		Q field = reverseDataFlow.roots();
-		Q predecessors = dataFlowEdges.predecessors(CommonQueries.functionParameter(lockUnlockFunctionCalls, 0));
+		Q predecessors = dataFlowEdges.predecessors(CommonQueries.functionParameter(lockUnlockFunctionCallsQ, 0));
 		Q functionsToExclude = LSAPUtils.functionsQ(VerificationProperties.getFunctionsToExclude());
 		Q functionsToExcludeReturnCallSites = functionsToExclude.contained().nodes(XCSG.ReturnValue);
 		Q forwardDataFlow = dataFlowEdges.between(field, predecessors, functionsToExcludeReturnCallSites);
 		Q cfgNodesContainingPassedParameters = forwardDataFlow.leaves().containers();
 		callsites = universe().edges(XCSG.Contains).forward(cfgNodesContainingPassedParameters).nodes(XCSG.CallSite);
 				
-		Q mpg = LSAPUtils.mpg(callsites, lockFunctionCalls, unlockFunctionCalls);
-		mpg = mpg.union(lockUnlockFunctionCalls);
+		Q mpg = LSAPUtils.mpg(callsites, lockFunctionCallsQ, unlockFunctionCallsQ);
+		mpg = mpg.union(lockUnlockFunctionCallsQ);
 		mpg = mpg.induce(universe().edges(XCSG.Call));
-		Q unusedEdges = mpg.edges(XCSG.Call).forwardStep(lockUnlockFunctionCalls).edges(XCSG.Call);
+		Q unusedEdges = mpg.edges(XCSG.Call).forwardStep(lockUnlockFunctionCallsQ).edges(XCSG.Call);
 		mpg = mpg.differenceEdges(unusedEdges);
 		Q unusedNodes = mpg.roots().intersection(mpg.leaves());
 		mpg = mpg.difference(unusedNodes);
@@ -113,7 +122,7 @@ public class LSAP {
 			}
 		}
 		Node signatureNode = field.eval().nodes().one();
-		SignatureVerificationUtils.verifySignature(lockNode, signatureNode, mpg, cfgNodesContainingPassedParameters, lockFunctionCalls, unlockFunctionCalls, graphsOutputDirectoryPath);
+		SignatureVerificationUtils.verifySignature(lockNode, signatureNode, mpg, cfgNodesContainingPassedParameters, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
 	}
 	
 	/**

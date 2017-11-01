@@ -251,7 +251,7 @@ public class LockVerificationGraphsGenerator {
 
 		String containingDirectoryName = String.format(LOCK_GRAPH_DIRECTORY_NAME_PATTERN, status.getStatusString(), lock.addressBits(), sourceCorrespondenceString, this.signtureNode.getAttr(XCSG.name).toString());
 		this.currentLockGraphsOutputDirectory = this.graphsOutputDirectory.resolve(containingDirectoryName).toFile();
-		if(!this.currentLockGraphsOutputDirectory.mkdir()){
+		if(!this.currentLockGraphsOutputDirectory.mkdirs()){
 			Log.info("Cannot create directory:" + this.currentLockGraphsOutputDirectory.getAbsolutePath());
 			return false;
 		}

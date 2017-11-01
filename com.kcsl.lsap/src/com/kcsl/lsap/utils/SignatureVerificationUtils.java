@@ -4,7 +4,6 @@ import static com.ensoftcorp.atlas.core.script.Common.universe;
 
 import java.awt.Color;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.ensoftcorp.atlas.c.core.query.Attr;
@@ -18,6 +17,7 @@ import com.ensoftcorp.atlas.core.markup.MarkupProperty;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
+import com.ensoftcorp.open.commons.analysis.CallSiteAnalysis;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.ensoftcorp.open.pcg.common.PCGFactory;
@@ -31,48 +31,57 @@ public class SignatureVerificationUtils {
 	 * Verifies the given <code>signatures</code> with the context of the <code>lockFunctionCalls</code> and <code>unlockFunctionCalls</code>.
 	 * 
 	 * @param signatures The signatures that will be used to start the verification for the associated locks/unlocks.
-	 * @param lockFunctionCalls A {@link List} of Strings corresponding to the functions performing the actual lock on the given <code>signatures</code>.
-	 * @param unlockFunctionCalls A {@link list} of Strings corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
+	 * @param lockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual lock on the given <code>signatures</code>.
+	 * @param unlockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
 	 */
-	public static void verifySignatures(Q signatures, List<String> lockFunctionCalls, List<String> unlockFunctionCalls, Path graphsOutputDirectoryPath){
+	public static void verifySignatures(Q signatures, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){
 		Reporter reporter = new Reporter();
 		double totalRunningTime = 0;
 		double totalRunningTimeWithDF = 0;
-		Q lockFunctionCallsQ = LSAPUtils.functionsQ(lockFunctionCalls);
-		Q unlockFunctionCallsQ = LSAPUtils.functionsQ(unlockFunctionCalls);
+		Q lockUnlockFunctionCallsQ = lockFunctionCallsQ.union(unlockFunctionCallsQ);
 		Q functionsToExclude = LSAPUtils.functionsQ(VerificationProperties.getFunctionsToExclude());
+
+		Q dataFlowContext = universe().edges(XCSG.DataFlow_Edge, Attr.Edge.ADDRESS_OF, Attr.Edge.POINTER_DEREFERENCE);
+		
+		// 1. Find {@link XCSG#CallSite} for <code>lockUnlockFunctionCallsQ</code>.
+		Q lockUnlockFunctionCallSites = CallSiteAnalysis.getCallSites(lockUnlockFunctionCallsQ);
+		
+		// 2. Find the {@link XCSG#ParameterPass} nodes at {@link XCSG#parameterIndex} "0" that are passed to <code>lockUnlockFunctionCallSites</code>.
+		Q parametersPassedToLockUnlockFunctionCallSites = universe().edges(XCSG.ParameterPassedTo).predecessors(lockUnlockFunctionCallSites).selectNode(XCSG.parameterIndex, 0);
+
 		AtlasSet<Node> signatureNodes = signatures.eval().nodes();
 		int signatureProcessingIndex = 0;
 		for(Node signatureNode : signatureNodes){
 			long analysisStartTime = System.currentTimeMillis();
+			LSAPUtils.log("Processing signature [" + signatureNode.getAttr(XCSG.name) + "] " + (++signatureProcessingIndex) + "/" + signatureNodes.size());
 			Q signature = Common.toQ(signatureNode);
 			
-			LSAPUtils.log("Processing signature [" + signatureNode.getAttr(XCSG.name) + "] " + (++signatureProcessingIndex) + "/" + signatureNodes.size());
-			
-			// Skip processing the signature node if it is contained within a lock function call.
-			Q functionContainingSignature = Common.toQ(CommonQueries.getContainingFunction(signatureNode));
-			if(!lockFunctionCallsQ.intersection(functionContainingSignature).eval().nodes().isEmpty()){
-				LSAPUtils.log("Skipping signature [" + signatureProcessingIndex + "] as it is contained with a lock function call.");
-				continue;
-			}
-			
 			// Skip processing the signature node if it has no data flow to the parameters passed to a lock/unlock function call.
-			Q lockUnlockFunctionParameters = CommonQueries.functionParameter(lockFunctionCallsQ.union(unlockFunctionCallsQ), 0);
-			Q dataFlowContext = universe().edges(XCSG.DataFlow_Edge, Attr.Edge.ADDRESS_OF, Attr.Edge.POINTER_DEREFERENCE);
-			Q parametersPassedToLockUnlockFunctionCalls = dataFlowContext.successors(lockUnlockFunctionParameters);
-			Q functionsToExcludeReturnCallSites = functionsToExclude.contained().nodes(XCSG.ReturnValue);
-			Q dataFlowBetweenSignatureAndParameters = dataFlowContext.between(signature, parametersPassedToLockUnlockFunctionCalls, functionsToExcludeReturnCallSites);
-			AtlasSet<Node> dataFlowNodes = dataFlowBetweenSignatureAndParameters.eval().nodes();
-			if(dataFlowNodes.isEmpty() || (dataFlowNodes.size() == 1 && dataFlowNodes.contains(signatureNode))){
+			Q dataFlowExistenceTest = dataFlowContext.successors(signature);
+			if(dataFlowExistenceTest.eval().nodes().isEmpty()){
 				LSAPUtils.log("Skipping signature [" + signatureProcessingIndex + "] - as it has no data flow to the parameters passed to a lock/unlock function call.");
 				continue;					
 			}
 			
-			Q parametersPassedToLockUnlockCallsFromSignature = dataFlowBetweenSignatureAndParameters.intersection(parametersPassedToLockUnlockFunctionCalls);
-			Q cfgNodesContainingPassedParameters = parametersPassedToLockUnlockCallsFromSignature.containers().nodes(XCSG.ControlFlow_Node);
+			// 3. Find the {@link XCSG#ReturnValue} nodes that will be excluded from the data flow computations.
+			Q functionsToExcludeReturnCallSites = functionsToExclude.contained().nodes(XCSG.ReturnValue);
+			
+			// 4. Check whether the signature is connected through <code>dataFlowContext</code> edges to the <code>parametersPassedToLockUnlockFunctionCallSites</code>.
+			Q dataFlowBetweenSignatureAndParameters = dataFlowContext.between(signature, parametersPassedToLockUnlockFunctionCallSites, functionsToExcludeReturnCallSites);
+			
+			// 5. Find the parameters associated only with this signature.
+			Q parametersPassedToLockUnlockCallsFromSignature = dataFlowBetweenSignatureAndParameters.intersection(parametersPassedToLockUnlockFunctionCallSites);
+			
+			// Skip processing the signature node if it has no data flow to the parameters passed to a lock/unlock function call.
+			if(parametersPassedToLockUnlockCallsFromSignature.eval().nodes().isEmpty()){
+				LSAPUtils.log("Skipping signature [" + signatureProcessingIndex + "] - as it has no data flow to the parameters passed to a lock/unlock function call.");
+				continue;					
+			}
+			
+			Q cfgNodesContainingPassedParameters = LSAPUtils.getContainingNodes(parametersPassedToLockUnlockCallsFromSignature, XCSG.ControlFlow_Node);
 			Q callSitesWithinCFGNodes = universe().edges(XCSG.Contains).forward(cfgNodesContainingPassedParameters).nodes(XCSG.CallSite);
 			
-			Q mpg = LSAPUtils.mpg(callSitesWithinCFGNodes, lockFunctionCalls, unlockFunctionCalls);
+			Q mpg = LSAPUtils.mpg(callSitesWithinCFGNodes, lockFunctionCallsQ, unlockFunctionCallsQ);
 			long mpgNodeSize = mpg.eval().nodes().size();
 			if(mpgNodeSize > VerificationProperties.getMPGNodeSizeLimit()){
 				LSAPUtils.log("Skipping signature [" + signatureProcessingIndex + "] - as it exceeds the mpg node size limit [" + mpgNodeSize + "].");
@@ -97,7 +106,7 @@ public class SignatureVerificationUtils {
 			}
 			
 			double dataFlowAnalysisTime = (System.currentTimeMillis() - analysisStartTime)/(60*1000F);
-			Reporter subReporter = verifySignature(null, signatureNode, mpg, cfgNodesContainingPassedParameters, lockFunctionCalls, unlockFunctionCalls, graphsOutputDirectoryPath);
+			Reporter subReporter = verifySignature(null, signatureNode, mpg, cfgNodesContainingPassedParameters, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
 			
 			if(subReporter == null){
 				LSAPUtils.log("Skipping signature [" + signatureProcessingIndex + "] - verification results on \"NULL\" status.");
@@ -123,34 +132,21 @@ public class SignatureVerificationUtils {
 	 * @param signatureNode A {@link Node} corresponding to the type object passed to the lock/unlock calls.
 	 * @param mpg An {@link Q} corresponding to the matching pair graph associated with <code>signatureNode</code>.
 	 * @param cfgNodesContainingEvents An {@link Q} containing the CFG nodes that correspond to lock/unlock call events.
-	 * @param lockFunctionCalls A {@link List} of Strings corresponding to the functions performing the actual lock on the given <code>signatures</code>.
-	 * @param unlockFunctionCalls A {@link list} of Strings corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
+	 * @param lockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual lock on the given <code>signatures</code>.
+	 * @param unlockFunctionCalls A {@link Q} of corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
 	 * @return
 	 */
-	public static Reporter verifySignature(Node lockNode, Node signatureNode, Q mpg, Q cfgNodesContainingEvents, List<String> lockFunctionCalls, List<String> unlockFunctionCalls, Path graphsOutputDirectoryPath){		
-		Q lockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getSpinLockFunctionCalls());
-		Q unlockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getSpinUnlockFunctionCalls());
+	public static Reporter verifySignature(Node lockNode, Node signatureNode, Q mpg, Q cfgNodesContainingEvents, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){		
+		Q mpgFunctions = mpg.difference(lockFunctionCallsQ.union(unlockFunctionCallsQ));
 		AtlasMap<Node, PCG> functionPCGMap = new AtlasGraphKeyHashMap<Node, PCG>();
 		AtlasMap<Node, List<Q>> functionEventsMap = new AtlasGraphKeyHashMap<Node, List<Q>>();
 		
-		Graph mpgGraph = mpg.eval();
-		AtlasSet<Node> mpgNodes = mpgGraph.nodes();
-		
-		List<String> mpgFunctions = new ArrayList<String>();
-		for(Node mpgNode : mpgNodes){
-			if(lockFunctionCallsQ.eval().nodes().contains(mpgNode) || unlockFunctionCallsQ.eval().nodes().contains(mpgNode))
-				continue;
-			mpgFunctions.add((String) mpgNode.getAttr(XCSG.name));
-		}
-		
-		for(Node mpgNode : mpgNodes){
-			if(lockFunctionCallsQ.eval().nodes().contains(mpgNode) || unlockFunctionCallsQ.eval().nodes().contains(mpgNode))
-				continue;
-			
+		Graph mpgGraphWithoutLockUnlockCalls = mpgFunctions.eval();
+		AtlasSet<Node> mpgNodes = mpgGraphWithoutLockUnlockCalls.nodes();		
+		for(Node mpgNode : mpgNodes){			
 			String mpgFunctionName = (String) mpgNode.getAttr(XCSG.name);
 			Q cfg = CommonQueries.cfg(mpgNode);
-			
-			List<Q> events = LSAPUtils.compileCFGNodesContainingEventNodes(cfg, cfgNodesContainingEvents, mpgFunctions, lockFunctionCalls, unlockFunctionCalls);
+			List<Q> events = LSAPUtils.compileCFGNodesContainingEventNodes(cfg, cfgNodesContainingEvents, mpgFunctions, lockFunctionCallsQ, unlockFunctionCallsQ);
 			Q lockEvents = events.get(0);
 			Q unlockEvents = events.get(1);
 			Q mpgFunctionCallEvents = events.get(2);
@@ -164,7 +160,6 @@ public class SignatureVerificationUtils {
 			LSAPUtils.log("Creating PCG for [" + mpgFunctionName + "].");
 			PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), allEvents);
 			functionPCGMap.put(mpgNode, pcg);
-			events.remove(events.size() - 1);
 			functionEventsMap.put(mpgNode, events);
 		}
 		

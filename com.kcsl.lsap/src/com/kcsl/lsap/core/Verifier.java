@@ -247,7 +247,7 @@ public class Verifier {
 			int count = 0;
 			for(MatchingPair pair : pairs){
 				pair.verify(this.lockFunctionCallEvents, this.unlockFunctionCallEvents, this.mayEventsFeasibility, this.summaries);
-				LSAPUtils.log((++count) + pair.toString());
+				LSAPUtils.log("[" + (++count) + "] " + pair.toString());
 				switch(pair.getResult()){
 				case DANGLING_LOCK:
 					danglingE1Events.add(e1Event);

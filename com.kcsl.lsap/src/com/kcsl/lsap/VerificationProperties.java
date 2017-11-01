@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
+import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 
@@ -149,7 +150,7 @@ public class VerificationProperties {
 				System.err.println("Cannot open output log file for writing.");
 			}
 			
-			FUNCTIONS_TO_EXCLUDE = Arrays.asList(properties.getProperty("function_to_exclude"));
+			FUNCTIONS_TO_EXCLUDE = Arrays.asList(properties.getProperty("function_to_exclude").split(CONFIG_PROPERTIES_FILE_SEPARATOR));
 			MPG_NODE_SIZE_LIMIT = Integer.parseInt(properties.getProperty("mpg_node_size_limit"));
 			SAVE_VERIFICATION_GRAPHS = Boolean.parseBoolean(properties.getProperty("save_verification_graphs"));
 			SAVE_GRAPH_IN_DOT_FORMAT = Boolean.parseBoolean(properties.getProperty("save_graphs_in_dot_format"));
