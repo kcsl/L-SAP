@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
-import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 
@@ -68,6 +67,11 @@ public class VerificationProperties {
 	 * An instance of {@link FileWriter} that will be used to report verification result to a log file.
 	 */
 	private static FileWriter OUTPUT_LOG_FILE_WRITER;
+	
+	/**
+	 * An instance of {@link Path} corresponding to the output log file.
+	 */
+	private static Path OUTPUT_LOG_FILE_PATH;
 	
 	/**
 	 * A list of {@link String}s corresponding to the name of functions that need to be excluded from data flow analysis computationas they are causing problems.
@@ -144,8 +148,8 @@ public class VerificationProperties {
 			OUTPUT_DIRECTORY = Paths.get(properties.getProperty("output_directory"));
 			
 			try {
-				Path outputLogFilePath = Paths.get(OUTPUT_DIRECTORY.toFile().getAbsolutePath(), properties.getProperty("output_log_filename"));
-				OUTPUT_LOG_FILE_WRITER = new FileWriter(outputLogFilePath.toFile().getAbsolutePath());
+				OUTPUT_LOG_FILE_PATH = Paths.get(OUTPUT_DIRECTORY.toFile().getAbsolutePath(), properties.getProperty("output_log_filename"));
+				OUTPUT_LOG_FILE_WRITER = new FileWriter(OUTPUT_LOG_FILE_PATH.toFile().getAbsolutePath());
 			} catch (IOException e) {
 				System.err.println("Cannot open output log file for writing.");
 			}
@@ -183,6 +187,14 @@ public class VerificationProperties {
 	
 	public static FileWriter getOutputLogFileWriter(){
 		return OUTPUT_LOG_FILE_WRITER;
+	}
+	
+	public static void resetOutputLogFile() {
+		try {
+			OUTPUT_LOG_FILE_WRITER = new FileWriter(OUTPUT_LOG_FILE_PATH.toFile().getAbsolutePath());
+		} catch (IOException e) {
+			System.err.println("Cannot open output log file for writing.");
+		}
 	}
 	
 	public static List<String> getFunctionsToExclude(){

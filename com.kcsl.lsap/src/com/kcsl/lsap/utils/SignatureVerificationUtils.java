@@ -35,6 +35,17 @@ public class SignatureVerificationUtils {
 	 * @param unlockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
 	 */
 	public static void verifySignatures(Q signatures, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){
+		verifySignatures(null, signatures, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
+	}
+	
+	/**
+	 * Verifies the given <code>signatures</code> with the context of the <code>lockFunctionCalls</code> and <code>unlockFunctionCalls</code>.
+	 * 
+	 * @param signatures The signatures that will be used to start the verification for the associated locks/unlocks.
+	 * @param lockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual lock on the given <code>signatures</code>.
+	 * @param unlockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
+	 */
+	public static void verifySignatures(Node lockNode, Q signatures, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){
 		Reporter reporter = new Reporter();
 		double totalRunningTime = 0;
 		double totalRunningTimeWithDF = 0;
@@ -106,7 +117,7 @@ public class SignatureVerificationUtils {
 			}
 			
 			double dataFlowAnalysisTime = (System.currentTimeMillis() - analysisStartTime)/(60*1000F);
-			Reporter subReporter = verifySignature(null, signatureNode, mpg, cfgNodesContainingPassedParameters, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
+			Reporter subReporter = verifySignature(lockNode, signatureNode, mpg, cfgNodesContainingPassedParameters, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
 			
 			if(subReporter == null){
 				LSAPUtils.log("Skipping signature [" + signatureProcessingIndex + "] - verification results on \"NULL\" status.");
@@ -136,7 +147,7 @@ public class SignatureVerificationUtils {
 	 * @param unlockFunctionCalls A {@link Q} of corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
 	 * @return
 	 */
-	public static Reporter verifySignature(Node lockNode, Node signatureNode, Q mpg, Q cfgNodesContainingEvents, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){		
+	private static Reporter verifySignature(Node lockNode, Node signatureNode, Q mpg, Q cfgNodesContainingEvents, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){		
 		Q mpgFunctions = mpg.difference(lockFunctionCallsQ.union(unlockFunctionCallsQ));
 		AtlasMap<Node, PCG> functionPCGMap = new AtlasGraphKeyHashMap<Node, PCG>();
 		AtlasMap<Node, List<Q>> functionEventsMap = new AtlasGraphKeyHashMap<Node, List<Q>>();

@@ -119,8 +119,10 @@ public class LockVerificationGraphsGenerator {
 	
 	public void process(Node lock, VerificationStatus status, boolean displayGraphs){
 		// STEP 1: CREATE A LOCK FOLDER
-		if(!this.createContainingDirectory(lock, status)){
-			return;
+		if(VerificationProperties.isSaveVerificationGraphs()) {
+			if(!this.createContainingDirectory(lock, status)){
+				return;
+			}
 		}
 		
 		AtlasSet<Node> unlocks = new AtlasHashSet<Node>();
@@ -149,15 +151,17 @@ public class LockVerificationGraphsGenerator {
 			DisplayUtil.displayGraph(mpgGraph);
 		}
 		
-		if(VerificationProperties.saveGraphsInDotFormat()){
-			com.alexmerz.graphviz.objects.Graph mpgDotGraph = DOTGraphUtils.dotify(mpgGraph.nodes(), mpgGraph.edges(), null);
-			String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphDotFileNameExtension());
-			DOTGraphUtils.saveDOTGraph(mpgDotGraph, this.currentLockGraphsOutputDirectory, mpgGraphFileName);
-		}else{
-			try{
-				String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphImageFileNameExtension());
-				SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, mpgGraphFileName), mpgGraph).join();
-			} catch (InterruptedException e) {}	
+		if(VerificationProperties.isSaveVerificationGraphs()) {
+			if(VerificationProperties.saveGraphsInDotFormat()){
+				com.alexmerz.graphviz.objects.Graph mpgDotGraph = DOTGraphUtils.dotify(mpgGraph.nodes(), mpgGraph.edges(), null);
+				String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphDotFileNameExtension());
+				DOTGraphUtils.saveDOTGraph(mpgDotGraph, this.currentLockGraphsOutputDirectory, mpgGraphFileName);
+			}else{
+				try{
+					String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphImageFileNameExtension());
+					SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, mpgGraphFileName), mpgGraph).join();
+				} catch (InterruptedException e) {}	
+			}
 		}
 		
 		// STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG
@@ -176,7 +180,7 @@ public class LockVerificationGraphsGenerator {
 			Graph cfgGraph = cfg.eval();			
 			
 			ArrayList<Q> results = null;
-			if(status.equals(VerificationStatus.DEADLOCK)){
+			if(VerificationStatus.DEADLOCK.equals(status)){
 			    results = this.getEventNodesForCFG(cfg, Common.toQ(lock).union(Common.toQ(unlocks)), Common.empty() , mpgFunctionsQ);
 			}else{
 				results = this.getEventNodesForCFG(cfg, Common.toQ(lock), Common.toQ(unlocks), mpgFunctionsQ);
@@ -200,15 +204,17 @@ public class LockVerificationGraphsGenerator {
 				DisplayUtil.displayGraph(markup, cfgGraph);
 			}
 			
-			if(VerificationProperties.saveGraphsInDotFormat()){
-				com.alexmerz.graphviz.objects.Graph cfgDotGraph = DOTGraphUtils.dotify(cfgGraph.nodes(), cfgGraph.edges(), markup);
-				String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
-				DOTGraphUtils.saveDOTGraph(cfgDotGraph, this.currentLockGraphsOutputDirectory, cfgFileName);
-			}else{
-				try{
-					String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
-					SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, cfgFileName), cfgGraph, markup).join();
-				} catch (InterruptedException e) {}
+			if(VerificationProperties.isSaveVerificationGraphs()) {
+				if(VerificationProperties.saveGraphsInDotFormat()){
+					com.alexmerz.graphviz.objects.Graph cfgDotGraph = DOTGraphUtils.dotify(cfgGraph.nodes(), cfgGraph.edges(), markup);
+					String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
+					DOTGraphUtils.saveDOTGraph(cfgDotGraph, this.currentLockGraphsOutputDirectory, cfgFileName);
+				}else{
+					try{
+						String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
+						SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, cfgFileName), cfgGraph, markup).join();
+					} catch (InterruptedException e) {}
+				}
 			}
 			
 			PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), eventNodes);
@@ -229,15 +235,17 @@ public class LockVerificationGraphsGenerator {
 				DisplayUtil.displayGraph(markup, pcgGraph);
 			}
 			
-			if(VerificationProperties.saveGraphsInDotFormat()){
-				com.alexmerz.graphviz.objects.Graph efgDotGraph = DOTGraphUtils.dotify(pcgGraph.nodes(), pcgGraph.edges(), markup);
-				String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
-				DOTGraphUtils.saveDOTGraph(efgDotGraph, this.currentLockGraphsOutputDirectory, pcgFileName);
-			}else{
-				try {
-					String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
-					SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, pcgFileName), pcgGraph, markup).join();
-				} catch (InterruptedException e) {}
+			if(VerificationProperties.isSaveVerificationGraphs()) {
+				if(VerificationProperties.saveGraphsInDotFormat()){
+					com.alexmerz.graphviz.objects.Graph efgDotGraph = DOTGraphUtils.dotify(pcgGraph.nodes(), pcgGraph.edges(), markup);
+					String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
+					DOTGraphUtils.saveDOTGraph(efgDotGraph, this.currentLockGraphsOutputDirectory, pcgFileName);
+				}else{
+					try {
+						String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
+						SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, pcgFileName), pcgGraph, markup).join();
+					} catch (InterruptedException e) {}
+				}
 			}
 		}
 	}
@@ -251,6 +259,9 @@ public class LockVerificationGraphsGenerator {
 
 		String containingDirectoryName = String.format(LOCK_GRAPH_DIRECTORY_NAME_PATTERN, status.getStatusString(), lock.addressBits(), sourceCorrespondenceString, this.signtureNode.getAttr(XCSG.name).toString());
 		this.currentLockGraphsOutputDirectory = this.graphsOutputDirectory.resolve(containingDirectoryName).toFile();
+		if(this.currentLockGraphsOutputDirectory.exists()) {
+			return true;
+		}
 		if(!this.currentLockGraphsOutputDirectory.mkdirs()){
 			Log.info("Cannot create directory:" + this.currentLockGraphsOutputDirectory.getAbsolutePath());
 			return false;

@@ -71,7 +71,7 @@ public class Verifier {
 	/**
 	 * A mapping of {@link Node} corresponding to a lock function call to a set of its {@link MatchingPair}s.
 	 */
-	public AtlasMap<Node, HashSet<MatchingPair>> matchingPairsMap;
+	private AtlasMap<Node, HashSet<MatchingPair>> matchingPairsMap;
 	
 	/**
 	 * A list of {@link Node}s corresponding to verified locks.
@@ -172,8 +172,9 @@ public class Verifier {
 		this.aggregateVerificationResults(reporter);
 		reporter.done();
 		
-		if(reporter != null && VerificationProperties.isSaveVerificationGraphs()){
-			this.saveLockVerificationGraphs(lockNode);
+		boolean displayInteractiveGraphsForLock = lockNode != null;
+		if((reporter != null && VerificationProperties.isSaveVerificationGraphs()) || displayInteractiveGraphsForLock){
+			this.saveLockVerificationGraphs(lockNode, displayInteractiveGraphsForLock);
 		}
 		
 		return reporter;
@@ -268,65 +269,33 @@ public class Verifier {
 			LSAPUtils.log("------------------------------------------");
 		}
 		
+		reporter.printResults("[" + this.verificationInstanceId + "]");
+		
+		/**
+		 * Compute actual verified lock events.
+		 */
 		AtlasSet<Node> verifiedLockEvents = new AtlasHashSet<Node>(safeE1Events);
 		verifiedLockEvents = Common.toQ(verifiedLockEvents).difference(Common.toQ(danglingE1Events).union(Common.toQ(doubleE1Events))).eval().nodes();
+		
+		if(!verifiedLockEvents.isEmpty()) {
+			LSAPUtils.log("##########################################");
+			LSAPUtils.log("Verified Lock Events");
+			LSAPUtils.log("##########################################");
+			this.logMatchingResultsForEvents(verifiedLockEvents, VerificationResult.SAFE);
+			LSAPUtils.log("------------------------------------------");
+		}
 		
 		reporter.setVerifiedLockEvents(verifiedLockEvents);
 		for(Node verifiedLockEvent : verifiedLockEvents){
 			this.setIntraAndInterProceduralCasesCount(verifiedLockEvent, reporter);
 		}
-		
 		this.verifiedLocks.addAll(verifiedLockEvents);
 		
+		/**
+		 * Compute actual partially verified lock events.
+		 */
 		AtlasSet<Node> partiallyVerifiedE1Events = new AtlasHashSet<Node>(safeE1Events);
 		partiallyVerifiedE1Events = Common.toQ(partiallyVerifiedE1Events).difference(Common.toQ(verifiedLockEvents)).eval().nodes();
-		reporter.setPartiallyVerifiedLockEvents(partiallyVerifiedE1Events);
-		
-		this.partiallyLocks.addAll(partiallyVerifiedE1Events);
-		
-		reporter.setDeadlockedLockEvents(doubleE1Events);
-		AtlasSet<Node> actualRacedEvents = new AtlasHashSet<Node>(doubleE1Events);
-		actualRacedEvents = Common.toQ(actualRacedEvents).difference(Common.toQ(partiallyVerifiedE1Events)).eval().nodes();
-		reporter.setOnlyDeadlockedLockEvents(actualRacedEvents);
-		
-		this.deadlockedLocks.addAll(doubleE1Events);
-		
-		reporter.setDanglingLockEvents(danglingE1Events);
-		AtlasSet<Node> actualDanglingEvents = new AtlasHashSet<Node>(danglingE1Events);
-		actualDanglingEvents = Common.toQ(actualDanglingEvents).difference(Common.toQ(partiallyVerifiedE1Events)).eval().nodes();
-		reporter.setOnlyDandlingLockEvents(actualDanglingEvents);
-		
-		this.danglingLocks.addAll(danglingE1Events);
-		
-		
-		reporter.printResults("[" + this.verificationInstanceId + "]");
-		
-		AtlasSet<Node> missingE1Events = new AtlasHashSet<Node>();
-		for(Node node : this.lockFunctionCallEvents){
-			missingE1Events.add(node);
-		}
-		AtlasSet<Node> keys = new AtlasHashSet<Node>();
-		for(Node keyNode : this.matchingPairsMap.keySet()){
-			keys.add(keyNode);
-		}
-		missingE1Events = Common.toQ(missingE1Events).difference(Common.toQ(keys)).eval().nodes();
-		if(!missingE1Events.isEmpty()){
-			LSAPUtils.log("##########################################");
-			LSAPUtils.log("Missing (e1) Events");
-			LSAPUtils.log("##########################################");
-			AtlasSet<Node> missing = new AtlasHashSet<Node>();
-			for(Node e : missingE1Events){
-				missing.add(e);
-			}
-			this.logMatchingResultsForEvents(missingE1Events, null);
-			LSAPUtils.log("------------------------------------------");
-		}
-		
-		LSAPUtils.log("##########################################");
-		LSAPUtils.log("Verified Lock Events");
-		LSAPUtils.log("##########################################");
-		this.logMatchingResultsForEvents(verifiedLockEvents, VerificationResult.SAFE);
-		LSAPUtils.log("------------------------------------------");
 		
 		if(!partiallyVerifiedE1Events.isEmpty()){
 			LSAPUtils.log("##########################################");
@@ -336,13 +305,15 @@ public class Verifier {
 			LSAPUtils.log("------------------------------------------");
 		}
 		
-		if(!actualDanglingEvents.isEmpty()){
-			LSAPUtils.log("##########################################");
-			LSAPUtils.log("Dangling (Not-Verified) Lock Events");
-			LSAPUtils.log("##########################################");
-			this.logMatchingResultsForEvents(danglingE1Events, VerificationResult.DANGLING_LOCK);
-			LSAPUtils.log("------------------------------------------");
-		}
+		reporter.setPartiallyVerifiedLockEvents(partiallyVerifiedE1Events);
+		this.partiallyLocks.addAll(partiallyVerifiedE1Events);
+		
+		/**
+		 * Compute actual deadlocked lock events.
+		 */
+		reporter.setDeadlockedLockEvents(doubleE1Events);
+		AtlasSet<Node> actualRacedEvents = new AtlasHashSet<Node>(doubleE1Events);
+		actualRacedEvents = Common.toQ(actualRacedEvents).difference(Common.toQ(partiallyVerifiedE1Events)).eval().nodes();
 		
 		if(!actualRacedEvents.isEmpty()){
 			LSAPUtils.log("##########################################");
@@ -351,45 +322,76 @@ public class Verifier {
 			this.logMatchingResultsForEvents(doubleE1Events, VerificationResult.DEADLOCKED);
 			LSAPUtils.log("------------------------------------------");
 		}
+		
+		reporter.setOnlyDeadlockedLockEvents(actualRacedEvents);
+		this.deadlockedLocks.addAll(doubleE1Events);
+		
+		/**
+		 * Compute actual dangling lock events.
+		 */
+		reporter.setDanglingLockEvents(danglingE1Events);
+		AtlasSet<Node> actualDanglingEvents = new AtlasHashSet<Node>(danglingE1Events);
+		actualDanglingEvents = Common.toQ(actualDanglingEvents).difference(Common.toQ(partiallyVerifiedE1Events)).eval().nodes();
+		
+		if(!actualDanglingEvents.isEmpty()){
+			LSAPUtils.log("##########################################");
+			LSAPUtils.log("Dangling (Not-Verified) Lock Events");
+			LSAPUtils.log("##########################################");
+			this.logMatchingResultsForEvents(danglingE1Events, VerificationResult.DANGLING_LOCK);
+			LSAPUtils.log("------------------------------------------");
+		}
+		
+		reporter.setOnlyDandlingLockEvents(actualDanglingEvents);
+		this.danglingLocks.addAll(danglingE1Events);
+		
+		/**
+		 * Compute missing lock events from the verification.
+		 */
+		AtlasSet<Node> missingE1Events = Common.toQ(this.lockFunctionCallEvents).difference(Common.toQ(verifiedLocks), Common.toQ(partiallyLocks), Common.toQ(deadlockedLocks), Common.toQ(danglingLocks)).eval().nodes();
+		if(!missingE1Events.isEmpty()){
+			LSAPUtils.log("##########################################");
+			LSAPUtils.log("Missing Lock Events");
+			LSAPUtils.log("##########################################");
+			AtlasSet<Node> missing = new AtlasHashSet<Node>();
+			for(Node e : missingE1Events){
+				missing.add(e);
+			}
+			this.logMatchingResultsForEvents(missingE1Events, null);
+			LSAPUtils.log("------------------------------------------");
+		}
 	}
 	
-	private void saveLockVerificationGraphs(Node lockNode){
-		boolean displayGraphs = lockNode != null;
-		Q verifiedLocks = Common.toQ(this.verifiedLocks);
-		Q doubleLocks = Common.toQ(this.deadlockedLocks);
-		Q danglingLocks = Common.toQ(this.danglingLocks);
-		Q partiallyLocks = Common.toQ(this.partiallyLocks);
-		
+	private void saveLockVerificationGraphs(Node lockNode, boolean displayInteractiveGraphsForLock){
 		LockVerificationGraphsGenerator lockVerificationGraphsGenerator = new LockVerificationGraphsGenerator(this.signatureNode, this.fullMpg, this.matchingPairsMap, this.graphsOutputDirectoryPath);
 		
 		// A paired lock is never partially paired or unpaired or deadlock
-		Q pairedLocks = verifiedLocks.difference(partiallyLocks, danglingLocks, doubleLocks);
-		for(Node lock : pairedLocks.eval().nodes()){
+		//Q pairedLocks = verifiedLocks.difference(partiallyLocks, danglingLocks, doubleLocks);
+		for(Node lock : this.verifiedLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PAIRED, displayGraphs);
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PAIRED, displayInteractiveGraphsForLock);
 			}
 		}
 		
 		// A partially paired lock should not be a deadlock
-		Q partiallyPairedLocks = partiallyLocks.difference(doubleLocks);
-		for(Node lock : partiallyPairedLocks.eval().nodes()){
+		//Q partiallyPairedLocks = partiallyLocks.difference(doubleLocks);
+		for(Node lock : this.partiallyLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PARTIALLY_PAIRED, displayGraphs);
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PARTIALLY_PAIRED, displayInteractiveGraphsForLock);
 			}
 		}
 		
 		// A deadlock lock is only if it has deadlock
 		for(Node lock : this.deadlockedLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.DEADLOCK, displayGraphs);
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.DEADLOCK, displayInteractiveGraphsForLock);
 			}
 		}
 		
 		// An unpaired lock cannot be partially paired or paired
-		Q unpairedLocks = danglingLocks.difference(verifiedLocks, partiallyLocks);
-		for(Node lock : unpairedLocks.eval().nodes()){
+		//Q unpairedLocks = danglingLocks.difference(verifiedLocks, partiallyLocks);
+		for(Node lock : this.danglingLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.UNPAIRED, displayGraphs);
+				lockVerificationGraphsGenerator.process(lock, VerificationStatus.UNPAIRED, displayInteractiveGraphsForLock);
 			}
 		}
 	}
@@ -397,12 +399,12 @@ public class Verifier {
 	private void appendMatchingPairs(AtlasSet<Node> nodes){
 		for(Node node : nodes){
 			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
-	    	if(this.matchingPairsMap.containsKey(node)){
-	    		matchingPairs = this.matchingPairsMap.get(node);
-	    	}
-	    	FunctionSummary summary = this.summaries.get(CommonQueries.getContainingFunction(node));
-	    	matchingPairs.add(new MatchingPair(node, summary.getExitNode(), null));
-	    	this.matchingPairsMap.put(node, matchingPairs);
+		    	if(this.matchingPairsMap.containsKey(node)){
+		    		matchingPairs = this.matchingPairsMap.get(node);
+		    	}
+		    	FunctionSummary summary = this.summaries.get(CommonQueries.getContainingFunction(node));
+		    	matchingPairs.add(new MatchingPair(node, summary.getExitNode(), null));
+		    	this.matchingPairsMap.put(node, matchingPairs);
 		}
 	}
 	

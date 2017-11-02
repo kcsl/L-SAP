@@ -3,11 +3,8 @@ package com.kcsl.lsap;
 import static com.ensoftcorp.atlas.core.script.Common.universe;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.ensoftcorp.atlas.c.core.query.Attr.Edge;
-import com.ensoftcorp.atlas.core.db.graph.Graph;
 import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.index.common.SourceCorrespondence;
 import com.ensoftcorp.atlas.core.query.Q;
@@ -15,7 +12,7 @@ import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 import com.ensoftcorp.open.commons.analysis.CallSiteAnalysis;
-import com.ensoftcorp.open.commons.analysis.CommonQueries;
+import com.ensoftcorp.open.commons.utilities.DisplayUtils;
 import com.kcsl.lsap.utils.LSAPUtils;
 import com.kcsl.lsap.utils.SignatureVerificationUtils;
 
@@ -26,14 +23,26 @@ public class LSAP {
 	 * Verifies the spin and mutex locks in the indexed Linux kernel.
 	 */
 	public static void verify(){
-		verifyMutexLocks();
-		verifySpinLocks();
+		verifyMutexLocks(false);
+		verifySpinLocks(false);
 	}
 	
 	/**
 	 * Verifies the mutex locks in the indexed Linux kernel.
 	 */
 	public static void verifyMutexLocks(){
+		verifyMutexLocks(true);
+	}
+	
+	/**
+	 * Verifies the mutex locks in the indexed Linux kernel.
+	 * 
+	 * @param resetOutputLog Reset the output log file so it only shows the verification results for mutex locks.
+	 */
+	private static void verifyMutexLocks(boolean resetOutputLog){
+		if(resetOutputLog) {
+			VerificationProperties.resetOutputLogFile();
+		}
 		Q mutexObjectType = VerificationProperties.getMutexObjectType();
 		Q signatures = LSAPUtils.getSignaturesForObjectType(mutexObjectType);
 		Q lockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getMutexLockFunctionCalls());
@@ -46,6 +55,18 @@ public class LSAP {
 	 * Verifies the spin locks in the indexed Linux kernel.
 	 */
 	public static void verifySpinLocks(){
+		verifySpinLocks(true);
+	}
+	
+	/**
+	 * Verifies the spin locks in the indexed Linux kernel.
+	 * 
+	 * @param resetOutputLog Reset the output log file so it only shows the verification results for spin locks.
+	 */
+	private static void verifySpinLocks(boolean resetOutputLog){
+		if(resetOutputLog) {
+			VerificationProperties.resetOutputLogFile();
+		}
 		Q spinObjectType = VerificationProperties.getSpinObjectType();
 		Q signatures = LSAPUtils.getSignaturesForObjectType(spinObjectType);
 		Q lockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getSpinLockFunctionCalls());
@@ -60,69 +81,54 @@ public class LSAP {
 	 * @param lock the lock instance to be verified.
 	 */
 	public static void verify(Q lock){
-		Node lockNode = lock.eval().nodes().one();
 		Path graphsOutputDirectoryPath = VerificationProperties.getInteractiveVerificationGraphsOutputDirectory();
 		
-		List<String> lockFunctionCalls = new ArrayList<String>();
-		lockFunctionCalls.addAll(VerificationProperties.getMutexLockFunctionCalls());
-		lockFunctionCalls.addAll(VerificationProperties.getSpinLockFunctionCalls());
-		Q lockFunctionCallsQ = LSAPUtils.functionsQ(lockFunctionCalls);
+		Node lockNode = lock.eval().nodes().one();
 		
-		List<String> unlockFunctionCalls = new ArrayList<String>();
-		unlockFunctionCalls.addAll(VerificationProperties.getMutexUnlockFunctionCalls());
-		unlockFunctionCalls.addAll(VerificationProperties.getSpinUnlockFunctionCalls());
-		Q unlockFunctionCallsQ = LSAPUtils.functionsQ(unlockFunctionCalls);
-
-		Q lockUnlockFunctionCallsQ = lockFunctionCallsQ.union(unlockFunctionCallsQ);
+		// determine if its a mutex lock or a spin lock
+		Q callsitesWithinLock = universe().edges(XCSG.Contains).forward(lock).nodes(XCSG.CallSite);
+		Q targetsForCallsitesWithinLock = CallSiteAnalysis.getTargets(callsitesWithinLock);
 		
-		// 1. Find {@link XCSG#CallSite} for <code>lockUnlockFunctionCallsQ</code>.
-		Q lockUnlockFunctionCallSites = CallSiteAnalysis.getCallSites(lockUnlockFunctionCallsQ);
-		Q callsites = universe().edges(XCSG.Contains).forward(lock).nodes(XCSG.CallSite);
-		callsites = callsites.intersection(lockUnlockFunctionCallSites);
-		//callsites = universe().edges(XCSG.InvokedFunction).predecessors(lockUnlockFunctionCallsQ).nodes(XCSG.CallSite).intersection(callsites);
-		Q parameter = universe().edges(XCSG.ParameterPassedTo).predecessors(callsites).selectNode(XCSG.parameterIndex, 0);
+		Q lockFunctionCallsQ = Common.empty();
+		Q unlockFunctionCallsQ = Common.empty();
 		
-		Q dataFlowEdges = universe().edges(XCSG.DataFlow_Edge, Edge.ADDRESS_OF, Edge.POINTER_DEREFERENCE);
-		Q reverseDataFlow = dataFlowEdges.reverse(parameter);
-		Q field = reverseDataFlow.roots();
-		Q predecessors = dataFlowEdges.predecessors(CommonQueries.functionParameter(lockUnlockFunctionCallsQ, 0));
-		Q functionsToExclude = LSAPUtils.functionsQ(VerificationProperties.getFunctionsToExclude());
-		Q functionsToExcludeReturnCallSites = functionsToExclude.contained().nodes(XCSG.ReturnValue);
-		Q forwardDataFlow = dataFlowEdges.between(field, predecessors, functionsToExcludeReturnCallSites);
-		Q cfgNodesContainingPassedParameters = forwardDataFlow.leaves().containers();
-		callsites = universe().edges(XCSG.Contains).forward(cfgNodesContainingPassedParameters).nodes(XCSG.CallSite);
-				
-		Q mpg = LSAPUtils.mpg(callsites, lockFunctionCallsQ, unlockFunctionCallsQ);
-		mpg = mpg.union(lockUnlockFunctionCallsQ);
-		mpg = mpg.induce(universe().edges(XCSG.Call));
-		Q unusedEdges = mpg.edges(XCSG.Call).forwardStep(lockUnlockFunctionCallsQ).edges(XCSG.Call);
-		mpg = mpg.differenceEdges(unusedEdges);
-		Q unusedNodes = mpg.roots().intersection(mpg.leaves());
-		mpg = mpg.difference(unusedNodes);
+		Q mutexLockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getMutexLockFunctionCalls());
+		Q spinLockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getSpinLockFunctionCalls());
 		
-		long mpgNodeSize = mpg.eval().nodes().size();
-		if(mpgNodeSize > VerificationProperties.getMPGNodeSizeLimit()){
-			LSAPUtils.log("Skipping lock [" + lockNode.getAttr(XCSG.name) + "] - as it exceeds the mpg node size limit [" + mpgNodeSize + "].");
-			return;
-		}
-		
-		if(!mpg.intersection(functionsToExclude).eval().nodes().isEmpty()){
-			LSAPUtils.log("Skipping lock [" + lockNode.getAttr(XCSG.name) + "] -- as it contains problematic functions.");
-			return;						
-		}
-		
-		Graph mpgGraph = mpg.eval();
-		if(!LSAPUtils.isDirectedAcyclicGraph(mpg)){
-			mpgGraph = LSAPUtils.cutCyclesFromGraph(mpg);
-			mpg = Common.toQ(mpgGraph);
-			// Skip processing the signature if it is cyclic graph.
-			if(!LSAPUtils.isDirectedAcyclicGraph(mpg)){
-				LSAPUtils.log("Skipping lock [" + lockNode.getAttr(XCSG.name) + "] -- as it contains cycles.");
+		Q mutexIntersection = targetsForCallsitesWithinLock.intersection(mutexLockFunctionCallsQ);
+		Q spinIntersection = targetsForCallsitesWithinLock.intersection(spinLockFunctionCallsQ);
+		if(mutexIntersection.eval().nodes().isEmpty()) {
+			if(spinIntersection.eval().nodes().isEmpty()) {
+				DisplayUtils.showError("The selected lock does not call mutex/spin locks.");
 				return;
 			}
+			// <code>lock</code> is a spin lock
+			lockFunctionCallsQ = spinLockFunctionCallsQ;
+			unlockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getSpinUnlockFunctionCalls());
+		}else {
+			// <code>lock</code> is a mutex lock
+			lockFunctionCallsQ = mutexLockFunctionCallsQ;
+			unlockFunctionCallsQ = LSAPUtils.functionsQ(VerificationProperties.getMutexUnlockFunctionCalls());
 		}
-		Node signatureNode = field.eval().nodes().one();
-		SignatureVerificationUtils.verifySignature(lockNode, signatureNode, mpg, cfgNodesContainingPassedParameters, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
+		
+		Node callsiteOfInterestWithinLock = null;
+		for(Node callsiteWithinLock : callsitesWithinLock.eval().nodes()) {
+			Node targetFunctionCall = CallSiteAnalysis.getTargets(callsiteWithinLock).one();
+			if(lockFunctionCallsQ.eval().nodes().contains(targetFunctionCall)) {
+				callsiteOfInterestWithinLock = callsiteWithinLock;
+				break;
+			}
+		}
+		if(callsiteOfInterestWithinLock == null) {
+			DisplayUtils.showError(new IllegalStateException(), "Something wrong while finding the corresponding callsite");
+			return;
+		}
+
+		Q callsiteOfInterestWithinLockQ = Common.toQ(callsiteOfInterestWithinLock);		
+		Q parameterPassedToCallSiteOfInterest = universe().edges(XCSG.ParameterPassedTo).predecessors(callsiteOfInterestWithinLockQ).selectNode(XCSG.parameterIndex, 0);
+		Q reverseDataFlowFromParameter = universe().edges(XCSG.DataFlow_Edge, Edge.ADDRESS_OF, Edge.POINTER_DEREFERENCE).reverse(parameterPassedToCallSiteOfInterest);
+		Q signature = reverseDataFlowFromParameter.nodes(XCSG.Variable);
+		SignatureVerificationUtils.verifySignatures(lockNode, signature, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
 	}
 	
 	/**
