@@ -21,14 +21,14 @@ import com.ensoftcorp.atlas.core.xcsg.XCSG;
 /**
  * A class containing utility functions to export Atlas graphs to DOT format.
  */
-public class DOTGraphUtils {
+public class DotGraphExportUtils {
 	
 	/**
 	 * A private constructor to prevent intentional initializations of this class.
 	 * 
 	 * @throws IllegalAccessException If any initialization occur to this class.
 	 */
-	private DOTGraphUtils() throws IllegalAccessException {
+	private DotGraphExportUtils() throws IllegalAccessException {
 		throw new IllegalAccessException();
 	}
 	

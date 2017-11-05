@@ -26,7 +26,7 @@ import com.ensoftcorp.open.pcg.common.PCG;
 import com.ensoftcorp.open.pcg.common.PCGFactory;
 import com.kcsl.lsap.VerificationProperties;
 import com.kcsl.lsap.core.MatchingPair;
-import com.kcsl.lsap.utils.DOTGraphUtils;
+import com.kcsl.lsap.utils.DotGraphExportUtils;
 import com.kcsl.lsap.utils.LSAPUtils;
 
 public class LockVerificationGraphsGenerator {
@@ -153,9 +153,9 @@ public class LockVerificationGraphsGenerator {
 		
 		if(VerificationProperties.isSaveVerificationGraphs()) {
 			if(VerificationProperties.saveGraphsInDotFormat()){
-				com.alexmerz.graphviz.objects.Graph mpgDotGraph = DOTGraphUtils.dotify(mpgGraph, null);
+				com.alexmerz.graphviz.objects.Graph mpgDotGraph = DotGraphExportUtils.dotify(mpgGraph, null);
 				String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphDotFileNameExtension());
-				DOTGraphUtils.saveDOTGraph(mpgDotGraph, this.currentLockGraphsOutputDirectory, mpgGraphFileName);
+				DotGraphExportUtils.saveDOTGraph(mpgDotGraph, this.currentLockGraphsOutputDirectory, mpgGraphFileName);
 			}else{
 				try{
 					String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphImageFileNameExtension());
@@ -206,9 +206,9 @@ public class LockVerificationGraphsGenerator {
 			
 			if(VerificationProperties.isSaveVerificationGraphs()) {
 				if(VerificationProperties.saveGraphsInDotFormat()){
-					com.alexmerz.graphviz.objects.Graph cfgDotGraph = DOTGraphUtils.dotify(cfgGraph, markup);
+					com.alexmerz.graphviz.objects.Graph cfgDotGraph = DotGraphExportUtils.dotify(cfgGraph, markup);
 					String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
-					DOTGraphUtils.saveDOTGraph(cfgDotGraph, this.currentLockGraphsOutputDirectory, cfgFileName);
+					DotGraphExportUtils.saveDOTGraph(cfgDotGraph, this.currentLockGraphsOutputDirectory, cfgFileName);
 				}else{
 					try{
 						String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
@@ -237,9 +237,9 @@ public class LockVerificationGraphsGenerator {
 			
 			if(VerificationProperties.isSaveVerificationGraphs()) {
 				if(VerificationProperties.saveGraphsInDotFormat()){
-					com.alexmerz.graphviz.objects.Graph efgDotGraph = DOTGraphUtils.dotify(pcgGraph, markup);
+					com.alexmerz.graphviz.objects.Graph efgDotGraph = DotGraphExportUtils.dotify(pcgGraph, markup);
 					String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
-					DOTGraphUtils.saveDOTGraph(efgDotGraph, this.currentLockGraphsOutputDirectory, pcgFileName);
+					DotGraphExportUtils.saveDOTGraph(efgDotGraph, this.currentLockGraphsOutputDirectory, pcgFileName);
 				}else{
 					try {
 						String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
