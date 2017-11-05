@@ -2,7 +2,6 @@ package com.kcsl.lsap.core;
 
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -18,6 +17,7 @@ import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.kcsl.lsap.VerificationProperties;
+import com.kcsl.lsap.core.FunctionVerifier.PathStatus;
 import com.kcsl.lsap.core.LockVerificationGraphsGenerator.VerificationStatus;
 import com.kcsl.lsap.core.MatchingPair.VerificationResult;
 import com.kcsl.lsap.utils.LSAPUtils;
@@ -174,6 +174,7 @@ public class Verifier {
 		}
 		
 		this.aggregateVerificationResults(reporter);
+		reporter.printResults("[" + this.verificationInstanceId + "]");
 		reporter.done();
 		
 		boolean displayInteractiveGraphsForLock = lockNode != null;
@@ -194,13 +195,13 @@ public class Verifier {
 		PCG pcg = this.functionsPCGMap.get(function);
 		List<Q> events = this.functionEventsMap.get(function);
 		
-		HashMap<Node, FunctionSummary> successorFunctionSummaries = new HashMap<Node, FunctionSummary>();
+		AtlasMap<Node, FunctionSummary> successorFunctionSummaries = new AtlasGraphKeyHashMap<Node, FunctionSummary>();
 		AtlasSet<Node> successors = this.mpg.successors(Common.toQ(function)).eval().nodes();
 		for(Node successor : successors)
 			successorFunctionSummaries.put(successor, this.summaries.get(successor));
 		
-		FunctionVerifier functionVerifier = new FunctionVerifier(function, pcg, successorFunctionSummaries);	
-		FunctionSummary summary = functionVerifier.run(events);
+		FunctionVerifier functionVerifier = new FunctionVerifier(function, pcg, successorFunctionSummaries, events);	
+		FunctionSummary summary = functionVerifier.run();
 		this.lockFunctionCallEvents.addAll(summary.getLockFunctionCallEvents());
 		this.multiStateLockFunctionCallEvents.addAll(summary.getE1MayEvents());
 		this.unlockFunctionCallEvents.addAll(summary.getUnlockFunctionCallEvents());
@@ -229,9 +230,9 @@ public class Verifier {
 		int outStatus;
 		for(Node function : this.summaries.keySet()){
 			if(this.mpg.predecessors(Common.toQ(function)).eval().nodes().isEmpty()){
-				outStatus = this.summaries.get(function).getOuts();
+				outStatus = this.summaries.get(function).getNodeToPathStatus();
 				if(((outStatus & PathStatus.LOCK) != 0) || (outStatus == PathStatus.LOCK || outStatus == (PathStatus.LOCK | PathStatus.THROUGH))){
-					this.appendMatchingPairs(this.summaries.get(function).getOutl());
+					this.appendMatchingPairs(this.summaries.get(function).getNodeToEventsAlongPath());
 				}
 			}
 		}
@@ -272,8 +273,6 @@ public class Verifier {
 			}
 			LSAPUtils.log("------------------------------------------");
 		}
-		
-		reporter.printResults("[" + this.verificationInstanceId + "]");
 		
 		/**
 		 * Compute actual verified lock events.
@@ -418,7 +417,7 @@ public class Verifier {
 		    		matchingPairs = this.matchingPairsMap.get(node);
 		    	}
 		    	FunctionSummary summary = this.summaries.get(CommonQueries.getContainingFunction(node));
-		    	matchingPairs.add(new MatchingPair(node, summary.getExitNode(), null));
+		    	matchingPairs.add(new MatchingPair(node, summary.getPCG().getMasterExit(), null));
 		    	this.matchingPairsMap.put(node, matchingPairs);
 		}
 	}

@@ -11,11 +11,12 @@ import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.pcg.common.PCG;
+import com.kcsl.lsap.core.FunctionVerifier.PathStatus;
 import com.kcsl.lsap.feasibility.FeasibilityChecker;
 import com.kcsl.lsap.utils.LSAPUtils;
 
 /**
- * A class corresponding to the function summary for a function.
+ * A class corresponding to the function summary for a {@link XCSG#Function}.
  */
 public class FunctionSummary {
 
@@ -55,16 +56,6 @@ public class FunctionSummary {
 	private AtlasSet<Node> callSiteEvents;
 	
 	/**
-	 * A {@link Node} corresponding to the entry node for the {@link PCG} instance.
-	 */
-	private Node entryNode;
-	
-	/**
-	 * A {@link Node} corresponding to the exit node for the {@link PCG} instance.
-	 */
-	private Node exitNode;
-	
-	/**
 	 * A mapping between a callsite {@link Node} and its corresponding {@link XCSG#Function} node.
 	 */
 	private AtlasMap<Node, Node> callEventsFunctionsMap;
@@ -74,16 +65,37 @@ public class FunctionSummary {
 	 */
 	private FeasibilityChecker feasibilityChecker;
 	
-	private int rets;
-	private AtlasSet<Node> retl;
-	private int outs;
-	private AtlasSet<Node> outl;
+    /**
+     * An integer corresponding to the current {@link PathStatus} for {@link #function}.
+     */
+	private int nodeToPathStatus;
+	
+	/**
+	 * A list of {@link XCSG#ControlFlow_Node} containing events of interest in {@link #function}.
+	 */
+	private AtlasSet<Node> nodeToEventsAlongPath;
+	
+    /**
+     * A integer corresponding to current {@link PathStatus} at {@link #function} from its successors.
+     */
+	private int nodeToPathStatusFromSuccessors;
+	
+	/**
+	 * A list of {@link XCSG#ControlFlow_Node} containing events of interest up to {@link #function} from its successors.
+	 */
+	private AtlasSet<Node> nodeToEventsAlongPathFromSuccessors;
 	
 	/**
 	 * A mapping of {@link Node} corresponding to a lock function call to a set of its {@link MatchingPair}s.
 	 */
 	private AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap;
 
+	/**
+	 * Constructs a new instance of {@link FunctionSummary} for <code>function</code>, its <code>pcg</code> and <code>events</code>.
+	 * @param function
+	 * @param pcg
+	 * @param events
+	 */
 	public FunctionSummary(Node function, PCG pcg, List<Q> events) {
 		this.setFunction(function);
 		this.setPCG(pcg);
@@ -92,9 +104,9 @@ public class FunctionSummary {
 		this.setUnlockFunctionCallEvents(events.get(1).eval().nodes());
 		this.setCallSiteEvents(events.get(2).eval().nodes());
 		this.setMultiStateLockFunctionCallEvents(events.get(3).eval().nodes());
-    	this.setOutl(new AtlasHashSet<Node>());
-    	this.setRetl(new AtlasHashSet<Node>());
-    	this.feasibilityChecker = null;
+		this.setNodeToEventsAlongPath(new AtlasHashSet<Node>());
+		this.setNodeToEventsAlongPathFromSuccessors(new AtlasHashSet<Node>());
+		this.setFeasibilityChecker(null);
 	}
 	
 	public Node getFunctionElementForCallEvent(Node node){
@@ -137,22 +149,6 @@ public class FunctionSummary {
 		this.callSiteEvents = callEvents;
 	}
 
-	public Node getEntryNode() {
-		return entryNode;
-	}
-
-	public void setEntryNode(Node entryNode) {
-		this.entryNode = entryNode;
-	}
-
-	public Node getExitNode() {
-		return exitNode;
-	}
-
-	public void setExitNode(Node exitNode) {
-		this.exitNode = exitNode;
-	}
-
 	public Node getFunction() {
 		return function;
 	}
@@ -184,36 +180,36 @@ public class FunctionSummary {
 		this.pcg = pcg;
 	}
 
-	public int getRets() {
-		return rets;
+	public int getNodeToPathStatusFromSuccessors() {
+		return nodeToPathStatusFromSuccessors;
 	}
 
-	public void setRets(int rets) {
-		this.rets = rets;
+	public void setNodeToPathStatusFromSuccessors(int nodeToPathStatusFromSuccessors) {
+		this.nodeToPathStatusFromSuccessors = nodeToPathStatusFromSuccessors;
 	}
 
-	public AtlasSet<Node> getRetl() {
-		return retl;
+	public AtlasSet<Node> getNodeToEventsAlongPathFromSuccessors() {
+		return nodeToEventsAlongPathFromSuccessors;
 	}
 
-	public void setRetl(AtlasSet<Node> retl) {
-		this.retl = retl;
+	public void setNodeToEventsAlongPathFromSuccessors(AtlasSet<Node> nodeToEventsAlongPathFromSuccessors) {
+		this.nodeToEventsAlongPathFromSuccessors = nodeToEventsAlongPathFromSuccessors;
 	}
 
-	public AtlasSet<Node> getOutl() {
-		return outl;
+	public AtlasSet<Node> getNodeToEventsAlongPath() {
+		return nodeToEventsAlongPath;
 	}
 
-	public void setOutl(AtlasSet<Node> outl) {
-		this.outl = outl;
+	public void setNodeToEventsAlongPath(AtlasSet<Node> nodeToEventsAlongPath) {
+		this.nodeToEventsAlongPath = nodeToEventsAlongPath;
 	}
 
-	public int getOuts() {
-		return outs;
+	public int getNodeToPathStatus() {
+		return nodeToPathStatus;
 	}
 
-	public void setOuts(int outs) {
-		this.outs = outs;
+	public void setNodeToPathStatus(int nodeToPathStatus) {
+		this.nodeToPathStatus = nodeToPathStatus;
 	}
 
 	public void setMatchingPairsList(AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap) {
