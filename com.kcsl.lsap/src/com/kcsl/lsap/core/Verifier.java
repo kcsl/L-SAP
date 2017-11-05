@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import com.ensoftcorp.atlas.core.db.graph.Node;
+import com.ensoftcorp.atlas.core.db.list.AtlasList;
 import com.ensoftcorp.atlas.core.db.map.AtlasGraphKeyHashMap;
 import com.ensoftcorp.atlas.core.db.map.AtlasMap;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
@@ -159,7 +160,7 @@ public class Verifier {
 		LSAPUtils.log("MPG has ["+ this.mpg.eval().nodes().size() +"] nodes.");
 		Reporter reporter = new Reporter();
 		
-		List<Node> functions = LSAPUtils.topologicalSort(this.mpg);
+		AtlasList<Node> functions = LSAPUtils.topologicalSort(this.mpg);
 		Collections.reverse(functions);
 		
 		for(Node function : functions){

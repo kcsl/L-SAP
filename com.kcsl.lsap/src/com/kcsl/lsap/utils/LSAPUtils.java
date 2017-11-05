@@ -27,8 +27,25 @@ import com.ensoftcorp.open.commons.analysis.CallSiteAnalysis;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.kcsl.lsap.VerificationProperties;
 
+/**
+ * A class containing utility and helper functions for the verification.
+ */
 public class LSAPUtils {
 	
+	/**
+	 * A private constructor to prevent intentional initializations of this class.
+	 * 
+	 * @throws IllegalAccessException If any initialization occur to this class.
+	 */
+	private LSAPUtils() throws IllegalAccessException {
+		throw new IllegalAccessException();
+	}
+	
+	/**
+	 * Logs a <code>message</code> terminated with "\n" to {@link VerificationProperties#getOutputLogFileWriter()}.
+	 * 
+	 * @param message A {@link String} corresponding to the message to be logged.
+	 */
 	public static void log(String message){
 		try {
 			VerificationProperties.getOutputLogFileWriter().write(message + "\n");
@@ -38,18 +55,32 @@ public class LSAPUtils {
 		}
 	}
 	
+	/**
+	 * Converts a list of {@link String}s for function names to {@link Q} of {@link XCSG#Function}s.
+	 * 
+	 * @param functionsList A list {@link String}s of function names. 
+	 * @return A {@link Q} of {@link XCSG#Function}s.
+	 */
 	public static Q functionsQ(List<String> functionsList){
-		return Common.toQ(functions(functionsList));
+		return CommonQueries.functions((String[])functionsList.toArray());
 	}
 	
-	public static AtlasSet<Node> functions(List<String> functionsList){
-		return CommonQueries.functions((String[])functionsList.toArray()).eval().nodes();
-	}
-	
+	/**
+	 * Finds all {@link XCSG#Variable}s of <code>objectType</code>.
+	 * 
+	 * @param objectType A {@link String} corresponding to a {@link XCSG#Type}.
+	 * @return A {@link Q} of {@link XCSG#Variable}s of <code>objectType</code>.
+	 */
 	public static Q getSignaturesForObjectType(Q objectType){
 		return universe().edges(XCSG.TypeOf, XCSG.ReferencedType, XCSG.ArrayElementType).reverse(objectType).roots().nodes(XCSG.Variable);
 	}
 	
+	/**
+	 * Converts an {@link AtlasSet} of {@link GraphElement}s to a {@link AtlasList} of {@link GraphElement}s.
+	 * 
+	 * @param set An {@link AtlasSet} of {@link GraphElement}s.
+	 * @return A {@link AtlasList} of {@link GraphElement}s.
+	 */
 	public static AtlasList<? extends GraphElement> toAtlasList(AtlasSet<? extends GraphElement> set){
 		AtlasList<GraphElement> list = new AtlasArrayList<GraphElement>();
 		for(GraphElement element : set){
@@ -58,19 +89,13 @@ public class LSAPUtils {
 		return list;
 	}
 	
-	public static String toString(AtlasList<Node> path){
-		StringBuilder result = new StringBuilder();
-		for(int i = 0; i < path.size(); i++){
-			result.append(path.get(i).getAttr(XCSG.name));
-			if(i < path.size() - 1){
-				result.append(" >>> ");
-			}
-		}
-		result.append("\n");
-		return result.toString();
-	}
-	
-	public static String serialize(AtlasSet<Node> nodes){
+	/**
+	 * Serializes the list of {@link Node} by concatenating its {@link XCSG#name} attribute.
+	 * 
+	 * @param nodes A list of {@link Node}s.
+	 * @return A {@link String} of concatenated {@link XCSG#name} for the {@link Node}s in <code>nodes</code>.
+	 */	
+	public static String serialize(Iterable<? extends Node> nodes){
 		StringBuilder stringBuilder = new StringBuilder();
 		for(Node node : nodes){
 			stringBuilder.append(node.getAttr(XCSG.name) + "##");
@@ -78,18 +103,33 @@ public class LSAPUtils {
 		return stringBuilder.toString();
 	}
 	
+	/**
+	 * Finds all containing {@link XCSG#Node} tagged with <code>containingTag</code> along the {@link XCSG#Contains} edges.
+	 * 
+	 * @param nodes The nodes for which the container to be found.
+	 * @param containingTag The tag for the containing nodes to be found.
+	 * @return A {@link Q} of nodes containing <code>nodes</code>.
+	 */
 	public static Q getContainingNodes(Q nodes, String containingTag) {
 		AtlasSet<Node> nodeSet = nodes.eval().nodes();
-		AtlasSet<Node> containingMethods = new AtlasHashSet<Node>();
+		AtlasSet<Node> containingNodes = new AtlasHashSet<Node>();
 		for (Node currentNode : nodeSet) {
-			Node function = CommonQueries.getContainingNode(currentNode, containingTag);
-			if (function != null){
-				containingMethods.add(function);
+			Node containingNode = CommonQueries.getContainingNode(currentNode, containingTag);
+			if (containingNode != null){
+				containingNodes.add(containingNode);
 			}
 		}
-		return Common.toQ(Common.toGraph(containingMethods));
+		return Common.toQ(containingNodes);
 	}
 	
+	/**
+	 * Finds a list of direct {@link Edge}s from <code>from</code> node to </code>to</code> node in the given <code>graph</code>.
+	 * 
+	 * @param graph An instance of {@link Graph} to be used to find edges.
+	 * @param from An instance of {@link Node}.
+	 * @param to An instance of {@link Node}.
+	 * @return A list of {@link Edge}s or empty list if none is found.
+	 */
 	public static AtlasList<Edge> findDirectEdgesBetweenNodes(Graph graph, Node from, Node to){
 		AtlasList<Edge> result = new AtlasArrayList<Edge>();
 		AtlasSet<Edge> edges = graph.edges(from, NodeDirection.OUT);
@@ -102,12 +142,26 @@ public class LSAPUtils {
 		return result;
 	}
 	
+	/**
+	 * Finds a loop-free CFG for <code>function</code>.
+	 * 
+	 * @param function A {@link Q} corresponding to a {@link XCSG#Function} node.
+	 * @return A {@link Q} corresponding to the CFG of <code>function</code> without the {@link XCSG#ControlFlowBackEdge}s.
+	 */
 	public static Q loopFreeCFG(Q function){
 		Q cfg = CommonQueries.cfg(function);
 		Q cfgBackEdges = cfg.edges(XCSG.ControlFlowBackEdge);
 		return cfg.differenceEdges(cfgBackEdges);
 	}
 	
+	/**
+	 * Finds the Matching Pair Graph (MPG) for the given <code>callSites</code> given the <code>lockFunctionCallsQ</code> and <code>unlockFunctionCallsQ</code>.
+	 * 
+	 * @param callSites The {@link XCSG#CallSite} for the lock/unlock function calls. 
+	 * @param lockFunctionCallsQ A {@link Q} for the lock function calls.
+	 * @param unlockFunctionCallsQ A {@link Q} for the unlock function calls.
+	 * @return A {@link Q} corresponding to the MPG.
+	 */
 	public static Q mpg(Q callSites, Q lockFunctionCallsQ, Q unlockFunctionCallsQ){
 		AtlasSet<Node> callSitesNodes = callSites.eval().nodes();
 		HashMap<Node, HashMap<String, AtlasSet<Node>>> functionMap = new HashMap<Node, HashMap<String,AtlasSet<Node>>>(); 
@@ -223,14 +277,26 @@ public class LSAPUtils {
 		return mpg;
 	}
 	
+	/**
+	 * Finds whether the graph embodied by the given <code>q</code> is acyclic.
+	 * 
+	 * @param q {@link Q} containing a graph to be tested.
+	 * @return true if the graph embodied by <code>q</code> is acyclic, otherwise false.
+	 */
 	public static boolean isDirectedAcyclicGraph(Q q){
 		return (topologicalSort(q) != null);
 	}
 
-	public static List<Node> topologicalSort(Q q){
+	/**
+	 * Finds a topological sorted list of nodes in the graph embodies by <code>q</code>.
+	 * 
+	 * @param q A {@link Q} containing the graph of nodes to be sorted.
+	 * @return A topologically sorted list of nodes in <code>q<code> or null if the graph is cyclic.
+	 */
+	public static AtlasList<Node> topologicalSort(Q q){
 		Graph graph = q.eval();
 		LinkedHashSet<Node> seenNodes = new LinkedHashSet<Node>(); 
-		List<Node> exploredNodes = new ArrayList<Node>();
+		AtlasList<Node> exploredNodes = new AtlasArrayList<Node>();
 		
 		for(Node v : graph.nodes()){
 			if(!exploredNodes.contains(v)){
@@ -242,7 +308,16 @@ public class LSAPUtils {
 		return exploredNodes;
 	}
 	
-	private static boolean DFS(Q q, LinkedHashSet<Node> seenNodes, List<Node> exploredNodes, Node v){
+	/**
+	 * A Depth First Search (DFS) traversal from the node <code>v</code> given the <code>exploredNodes</code> and <code>seenNodes</code> along the path.
+	 * 
+	 * @param q A {@link Q} containing the graph to be traversed.
+	 * @param seenNodes A list of {@link Node} seen before the <code>v</code> along the path.
+	 * @param exploredNodes A list of {@link Node} completely explored nodes before along the path to <code>v</code>
+	 * @param v A {@link Node} from which the DFS traversal will start.
+	 * @return true if DFS successes to traversal to the leaves of the graphs without encountering any <code>exploredNodes</code> and <code>seenNodes</code>.
+	 */
+	private static boolean DFS(Q q, LinkedHashSet<Node> seenNodes, AtlasList<Node> exploredNodes, Node v){
 		seenNodes.add(v);
 		AtlasSet<Node> successors = q.successors(Common.toQ(v)).eval().nodes();
 		for(Node node: successors){
@@ -258,6 +333,12 @@ public class LSAPUtils {
 		return true;
 	}
 	
+	/**
+	 * Eliminates cycles from the graph embedded in <code>q</code>.
+	 * 
+	 * @param q A {@link Q} containing a graph to be processed.
+	 * @return A {@link Graph} without cycles.
+	 */
 	public static Graph cutCyclesFromGraph(Q q){
 		Graph graph = q.eval();
 		// First: remove self-loop edges
@@ -294,6 +375,14 @@ public class LSAPUtils {
 		return graph;
 	}
 	
+	/**
+	 * Eliminates loops from the graph embedded in <code>q</code> on the given <code>path</code>.
+	 * 
+	 * @param q A {@link Q} containing the <code>path<code> that has the loop to be eliminated.
+	 * @param node A {@link Node} rooted at the loop.
+	 * @param path A list of {@link Node}s containing the loop.
+	 * @return A {@link Q} modified from the given <code>q</code> without a loop along the given <code>path</code>.
+	 */
 	private static Q cutLoopsInGraph(Q q, Node node, ArrayList<Node> path){
 		Q backEdgeQ = Common.empty();
 		path.add(node);
@@ -312,6 +401,17 @@ public class LSAPUtils {
 		return backEdgeQ;
 	}
 	
+	/**
+	 * Finds the events of interest in the given <code>cfg</code> based on <code>mpgFunctions</code>, <code>lockFunctionCalls</code> and <code>unlockFunctionCalls</code>.
+	 * 
+	 * @param cfg A {@link Q} corresponding to the Control Flow Graph of a function.
+	 * @param cfgNodesContainingEventsQ A {@link Q} of {@link XCSG#ControlFlow_Node}s containing events of interest.
+	 * @param mpgFunctions A {@link Q} of {@link XCSG#Function} contained within the MPG.
+	 * @param lockFunctionCalls A {@link Q} of lock function calls.
+	 * @param unlockFunctionCalls A {@link Q} of unlock function calls.
+	 * @return A list of {@link Q}s where the first element contains the events calling lock, the second element contains the events calls unlock, 
+	 * the third element contains calls to MPG functions, the last element contains all events.
+	 */
 	public static List<Q> compileCFGNodesContainingEventNodes(Q cfg, Q cfgNodesContainingEventsQ, Q mpgFunctions, Q lockFunctionCalls, Q unlockFunctionCalls){
 		Q cfgNodesQ = cfg.nodes(XCSG.ControlFlow_Node);
 		Q callSitesQ = universe().edges(XCSG.Contains).forward(cfgNodesQ).nodes(XCSG.CallSite);
@@ -346,4 +446,5 @@ public class LSAPUtils {
 		result.add(lockEvents.union(unlockEvents, mpgFunctionCallEvents));
 		return result;
 	}
+	
 }

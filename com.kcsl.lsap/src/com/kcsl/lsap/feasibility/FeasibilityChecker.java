@@ -187,7 +187,7 @@ public class FeasibilityChecker {
 				continue;
 			constraints = getConditionsSetFromPath(this.functionCFG, path, exitNode);
 			if(isPathFeasible(constraints)){
-				LSAPUtils.log("FEASIBLE: " + LSAPUtils.toString(path));
+				LSAPUtils.log("FEASIBLE: " + LSAPUtils.serialize(path));
 				LSAPUtils.log("FEASIBLE: " + toString(constraints));
 				return true;
 			}
@@ -298,7 +298,7 @@ public class FeasibilityChecker {
 			constraints = getConditionsSetFromPath(graph, path, node);
 			boolean isFeasible = isPathFeasible(constraints);
 			LSAPUtils.log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-			LSAPUtils.log(LSAPUtils.toString(path));
+			LSAPUtils.log(LSAPUtils.serialize(path));
 			LSAPUtils.log("PATH: " + (isFeasible ? "Feasible" : "Infeasible"));
 			LSAPUtils.log(toString(constraints));
 			LSAPUtils.log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
