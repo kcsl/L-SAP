@@ -7,23 +7,82 @@ import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
 import com.kcsl.lsap.utils.LSAPUtils;
 
+/**
+ * A class for reporting verification statistics.
+ */
 public class Reporter {
 
+	/**
+	 * The start time for the analysis.
+	 */
 	private long analysisStartTime;
+	
+	/**
+	 * The total processing time for the whole analysis.
+	 */
 	private double analysisProcessingTime;
+	
+	/**
+	 * A list of {@link Node}s calling lock.
+	 */
 	private AtlasSet<Node> lockEvents;
+	
+	/**
+	 * A list of {@link Node}s calling unlock.
+	 */
 	private AtlasSet<Node> unlockEvents;
+	
+	/**
+	 * A list of verified lock {@link Node}s.
+	 */
 	private AtlasSet<Node> verifiedLockEvents;
+	
+	/**
+	 * A list of partially verified lock {@link Node}s.
+	 */
 	private AtlasSet<Node> partiallyVerifiedLockEvents;
+	
+	/**
+	 * A list of dangling lock {@link Node}s.
+	 */
 	private AtlasSet<Node> danglingLockEvents;
+	
+	/**
+	 * A list of only dangling lock {@link Node}s.
+	 */
 	private AtlasSet<Node> onlyDanglingLockEvents;
+	
+	/**
+	 * A list of deadlocked lock {@link Node}s.
+	 */
 	private AtlasSet<Node> deadlockedLockEvents;
+	
+	/**
+	 * A list of only deadlocked lock {@link Node}s.
+	 */
 	private AtlasSet<Node> onlyDeadlockedLockEvents;
+	
+	/**
+	 * A list of verified lock {@link Node}s that is performed interprocedually.
+	 */
 	private AtlasSet<Node> interproceduralVerificationLockEvents;
+	
+	/**
+	 * A list of verified lock {@link Node}s that is performed intraprocedually.
+	 */
 	private AtlasSet<Node> intraproceduralVerificationLockEvents;
 	
-	public Reporter() {
+	/**
+	 * A {@link String} to be used for the title of this statistics.
+	 */
+	private String reportTitle;
+	
+	/**
+	 * Constructs a new instance of {@link Reporter}.
+	 */
+	public Reporter(String reportTile) {
 		LSAPUtils.log("Started at [" + new Date().toString() + "]");
+		this.reportTitle = reportTile;
 		this.analysisStartTime = System.currentTimeMillis();
 		this.lockEvents = new AtlasHashSet<Node>(); 
 		this.unlockEvents = new AtlasHashSet<Node>();
@@ -37,11 +96,48 @@ public class Reporter {
 		this.intraproceduralVerificationLockEvents = new AtlasHashSet<Node>();
 	}
 	
+	/**
+	 * Terminates the analysis and logs the results.
+	 */
 	public void done(){
 	    this.analysisProcessingTime = (System.currentTimeMillis() - analysisStartTime)/(60*1000F);
+		LSAPUtils.log("******************************************");
+	    LSAPUtils.log("*****************" + this.reportTitle + " Statistics***************");
+	    LSAPUtils.log("******************************************");
+	    LSAPUtils.log("Number of Lock Events: " + this.lockEvents.size());
+	    LSAPUtils.log("Number of Unlock Events: " + this.unlockEvents.size());
+	    
+	    double verifiedPercentage = (((double)this.verifiedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
+	    LSAPUtils.log("Number of Verified Lock Events: " + this.verifiedLockEvents.size() + "\t[" + verifiedPercentage + "%]");
+	    LSAPUtils.log("Number of Intra-procedural Cases: " + this.intraproceduralVerificationLockEvents.size());
+	    LSAPUtils.log("Number of Inter-procedural Cases: " + this.interproceduralVerificationLockEvents.size());
+	    
+	    double partiallyVerifiedPercentage = (((double)this.partiallyVerifiedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
+	    LSAPUtils.log("Number of Partially Verified Lock Events: " + this.partiallyVerifiedLockEvents.size() + "\t[" + partiallyVerifiedPercentage + "%]");
+	    
+	    double notVerifiedPercentage = (((double)this.danglingLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
+	    LSAPUtils.log("Number of Dangling Lock Events: " + this.danglingLockEvents.size() + "\t[" + notVerifiedPercentage + "%]");
+	    
+	    double actualDanglingPercentage = (((double)this.onlyDanglingLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
+	    LSAPUtils.log("Number of ONLY Dangling Lock Events: " + this.onlyDanglingLockEvents.size() + "\t[" + actualDanglingPercentage + "%]");
+	    
+	    double racedPercentage = (((double)this.deadlockedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
+	    LSAPUtils.log("Number of Deadlocked Lock Events: " + this.deadlockedLockEvents.size() + "\t[" + racedPercentage + "%]");
+	    
+	    double actualRacedPercentage = (((double)this.onlyDeadlockedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
+	    LSAPUtils.log("Number of ONLY Deadlocked Lock Events: " + this.onlyDeadlockedLockEvents.size() + "\t[" + actualRacedPercentage + "%]");
+	    
+	    LSAPUtils.log("******************************************");
+	    LSAPUtils.log("******************************************");
+	    LSAPUtils.log("******************************************");
 	    LSAPUtils.log("Done in [" + this.analysisProcessingTime + " minutes]!");
 	}
 	
+	/**
+	 * Aggregates the analysis results from <code>subReporter</code> to this instance of {@link Reporter}.
+	 * 
+	 * @param subReporter An instance of {@link Reporter} to be appended.
+	 */
 	public void aggregate(Reporter subReporter){
 		this.lockEvents.addAll(subReporter.getLockEvents());
 		this.unlockEvents.addAll(subReporter.getUnlockEvents());
@@ -139,35 +235,4 @@ public class Reporter {
 		return onlyDanglingLockEvents;
 	}
 	
-	public void printResults(String title){
-		LSAPUtils.log("******************************************");
-	    LSAPUtils.log("*****************" + title + " STATISTICS***************");
-	    LSAPUtils.log("******************************************");
-	    LSAPUtils.log("Number of Lock Events: " + this.lockEvents.size());
-	    LSAPUtils.log("Number of Unlock Events: " + this.unlockEvents.size());
-	    
-	    double verifiedPercentage = (((double)this.verifiedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
-	    LSAPUtils.log("Number of Verified Lock Events: " + this.verifiedLockEvents.size() + "\t[" + verifiedPercentage + "%]");
-	    LSAPUtils.log("Number of Intra-procedural Cases: " + this.intraproceduralVerificationLockEvents.size());
-	    LSAPUtils.log("Number of Inter-procedural Cases: " + this.interproceduralVerificationLockEvents.size());
-	    
-	    double partiallyVerifiedPercentage = (((double)this.partiallyVerifiedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
-	    LSAPUtils.log("Number of Partially Verified Lock Events: " + this.partiallyVerifiedLockEvents.size() + "\t[" + partiallyVerifiedPercentage + "%]");
-	    
-	    double notVerifiedPercentage = (((double)this.danglingLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
-	    LSAPUtils.log("Number of Dangling Lock Events: " + this.danglingLockEvents.size() + "\t[" + notVerifiedPercentage + "%]");
-	    
-	    double actualDanglingPercentage = (((double)this.onlyDanglingLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
-	    LSAPUtils.log("Number of ONLY Dangling Lock Events: " + this.onlyDanglingLockEvents.size() + "\t[" + actualDanglingPercentage + "%]");
-	    
-	    double racedPercentage = (((double)this.deadlockedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
-	    LSAPUtils.log("Number of Deadlocked Lock Events: " + this.deadlockedLockEvents.size() + "\t[" + racedPercentage + "%]");
-	    
-	    double actualRacedPercentage = (((double)this.onlyDeadlockedLockEvents.size()) / ((double) this.lockEvents.size())) * 100.0;
-	    LSAPUtils.log("Number of ONLY Deadlocked Lock Events: " + this.onlyDeadlockedLockEvents.size() + "\t[" + actualRacedPercentage + "%]");
-	    
-	    LSAPUtils.log("******************************************");
-	    LSAPUtils.log("******************************************");
-	    LSAPUtils.log("******************************************");
-	}
 }

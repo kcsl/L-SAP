@@ -61,7 +61,7 @@ public class SignatureVerificationUtils {
 	 * @param graphsOutputDirectoryPath A {@link Path} to where the verification graphs to be stored.
 	 */
 	public static void verifySignatures(Node lockNode, Q signatures, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){
-		Reporter reporter = new Reporter();
+		Reporter reporter = new Reporter("Overall Results");
 		double totalRunningTime = 0;
 		double totalRunningTimeWithDF = 0;
 		Q lockUnlockFunctionCallsQ = lockFunctionCallsQ.union(unlockFunctionCallsQ);
@@ -144,7 +144,6 @@ public class SignatureVerificationUtils {
 			totalRunningTimeWithDF += subReporter.getAnalysisProcessingTime();
 		}
 		reporter.done();
-		reporter.printResults("Overall Results");
 		LSAPUtils.log("******************************************");
 		LSAPUtils.log("Signatures Count: "  + signatureNodes.size());
 		LSAPUtils.log("Total Running Time [ "  + totalRunningTime + " minutes]!" );

@@ -161,7 +161,7 @@ public class Verifier {
 	 */
 	public Reporter verify(Node lockNode){
 		LSAPUtils.log("MPG has ["+ this.mpg.eval().nodes().size() +"] nodes.");
-		Reporter reporter = new Reporter();
+		Reporter reporter = new Reporter("[" + this.verificationInstanceId + "]");
 		
 		AtlasList<Node> functions = LSAPUtils.topologicalSort(this.mpg);
 		Collections.reverse(functions);
@@ -174,7 +174,7 @@ public class Verifier {
 		}
 		
 		this.aggregateVerificationResults(reporter);
-		reporter.printResults("[" + this.verificationInstanceId + "]");
+		
 		reporter.done();
 		
 		boolean displayInteractiveGraphsForLock = lockNode != null;
