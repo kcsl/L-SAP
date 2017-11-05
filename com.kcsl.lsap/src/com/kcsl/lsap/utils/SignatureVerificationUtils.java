@@ -25,7 +25,19 @@ import com.kcsl.lsap.VerificationProperties;
 import com.kcsl.lsap.core.Reporter;
 import com.kcsl.lsap.core.Verifier;
 
+/**
+ * A class containing utility functions to initiate the signature verification.
+ */
 public class SignatureVerificationUtils {
+	
+	/**
+	 * A private constructor to prevent intentional initializations of this class.
+	 * 
+	 * @throws IllegalAccessException If any initialization occur to this class.
+	 */
+	private SignatureVerificationUtils() throws IllegalAccessException {
+		throw new IllegalAccessException();
+	}
 
 	/**
 	 * Verifies the given <code>signatures</code> with the context of the <code>lockFunctionCalls</code> and <code>unlockFunctionCalls</code>.
@@ -33,6 +45,7 @@ public class SignatureVerificationUtils {
 	 * @param signatures The signatures that will be used to start the verification for the associated locks/unlocks.
 	 * @param lockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual lock on the given <code>signatures</code>.
 	 * @param unlockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
+	 * @param graphsOutputDirectoryPath A {@link Path} to where the verification graphs to be stored.
 	 */
 	public static void verifySignatures(Q signatures, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){
 		verifySignatures(null, signatures, lockFunctionCallsQ, unlockFunctionCallsQ, graphsOutputDirectoryPath);
@@ -41,9 +54,11 @@ public class SignatureVerificationUtils {
 	/**
 	 * Verifies the given <code>signatures</code> with the context of the <code>lockFunctionCalls</code> and <code>unlockFunctionCalls</code>.
 	 * 
+	 * @param lockNode A {@link XCSG#ControlFlow_Node} corresponding to a call to lock.
 	 * @param signatures The signatures that will be used to start the verification for the associated locks/unlocks.
 	 * @param lockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual lock on the given <code>signatures</code>.
 	 * @param unlockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
+	 * @param graphsOutputDirectoryPath A {@link Path} to where the verification graphs to be stored.
 	 */
 	public static void verifySignatures(Node lockNode, Q signatures, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){
 		Reporter reporter = new Reporter();
@@ -140,12 +155,14 @@ public class SignatureVerificationUtils {
 	/**
 	 * Verifies the given <code>signatureNode</code> associated with <code>mpg</code> in the context of <code>lockFunctionCalls</code> and <code>unlockFunctionCalls</code>.
 	 * 
+	 * @param lockNode A {@link XCSG#ControlFlow_Node} corresponding to a call to lock.
 	 * @param signatureNode A {@link Node} corresponding to the type object passed to the lock/unlock calls.
 	 * @param mpg An {@link Q} corresponding to the matching pair graph associated with <code>signatureNode</code>.
 	 * @param cfgNodesContainingEvents An {@link Q} containing the CFG nodes that correspond to lock/unlock call events.
 	 * @param lockFunctionCallsQ A {@link Q} corresponding to the functions performing the actual lock on the given <code>signatures</code>.
 	 * @param unlockFunctionCalls A {@link Q} of corresponding to the functions performing the actual unlock on the given <code>signatures</code>.
-	 * @return
+	 * @param graphsOutputDirectoryPath A {@link Path} to where the verification graphs to be stored.
+	 * @return An instance of {@link Reporter} for this verification instance or null of the verification did not succeed.
 	 */
 	private static Reporter verifySignature(Node lockNode, Node signatureNode, Q mpg, Q cfgNodesContainingEvents, Q lockFunctionCallsQ, Q unlockFunctionCallsQ, Path graphsOutputDirectoryPath){		
 		Q mpgFunctions = mpg.difference(lockFunctionCallsQ.union(unlockFunctionCallsQ));

@@ -22,6 +22,9 @@ import com.kcsl.lsap.core.LockVerificationGraphsGenerator.VerificationStatus;
 import com.kcsl.lsap.core.MatchingPair.VerificationResult;
 import com.kcsl.lsap.utils.LSAPUtils;
 
+/**
+ * A class that sorts out the verification process and aggregate the verification results.
+ */
 public class Verifier {
 	
 	/**
@@ -362,6 +365,12 @@ public class Verifier {
 		}
 	}
 	
+	/**
+	 * Saves or displays the verification results.
+	 * 
+	 * @param lockNode A {@link XCSG#ControlFlow_Node} corresponding to a call to lock.
+	 * @param displayInteractiveGraphsForLock A {@link Boolean} specifies whether to force display of interactive lock verification graphs.
+	 */
 	private void saveLockVerificationGraphs(Node lockNode, boolean displayInteractiveGraphsForLock){
 		LockVerificationGraphsGenerator lockVerificationGraphsGenerator = new LockVerificationGraphsGenerator(this.signatureNode, this.fullMpg, this.matchingPairsMap, this.graphsOutputDirectoryPath);
 		
@@ -397,6 +406,11 @@ public class Verifier {
 		}
 	}
 	
+	/**
+	 * Appends the {@link MatchingPair}s for the {@link Node}s in <code>nodes</code>.
+	 * 
+	 * @param nodes A list of {@link Node}s.
+	 */
 	private void appendMatchingPairs(AtlasSet<Node> nodes){
 		for(Node node : nodes){
 			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
@@ -409,23 +423,35 @@ public class Verifier {
 		}
 	}
 	
-	private void setIntraAndInterProceduralCasesCount(Node e1Event, Reporter reporter) {
-		HashSet<MatchingPair> pairs = this.matchingPairsMap.get(e1Event);
+	/**
+	 * Sets the counter for intra and inter procedural verification cases for the given <code>lockEvent</code> in <code>reporter</code>.
+	 * 
+	 * @param lockEvent A {@link Node} corresponding to call to lock function.
+	 * @param reporter A {@link Reporter} to be updated with new counts.
+	 */
+	private void setIntraAndInterProceduralCasesCount(Node lockEvent, Reporter reporter) {
+		HashSet<MatchingPair> pairs = this.matchingPairsMap.get(lockEvent);
 		for(MatchingPair pair : pairs){
 			if(pair.getSecondEvent() != null){
 				if(!CommonQueries.getContainingFunction(pair.getSecondEvent()).equals(CommonQueries.getContainingFunction(pair.getFirstEvent()))){
 					AtlasSet<Node> cases = reporter.getInterproceduralVerificationLockEvents();
-					cases.add(e1Event);
+					cases.add(lockEvent);
 					reporter.setInterproceduralVerificationLockEvents(cases);
 					return;
 				}
 			}
 		}
 		AtlasSet<Node> cases = reporter.getIntraproceduralVerificationLockEvents();
-		cases.add(e1Event);
+		cases.add(lockEvent);
 		reporter.setIntraproceduralVerificationLockEvents(cases);
 	}
 	
+	/**
+	 * Logs the <code>verificationResult</code> for <code>lockEvents</code>.
+	 * 
+	 * @param lockEvents A list of {@link XCSG#ControlFlow_Node}s containing calls to lock. 
+	 * @param verificationResult A {@link VerificationResult} associated with <code>lockEvents</code>.
+	 */
 	private void logMatchingResultsForEvents(AtlasSet<Node> lockEvents, VerificationResult verificationResult) {
 		for(Node lockEvent : lockEvents){
 			LSAPUtils.log("\t(e1) Event: [" + lockEvent.getAttr(XCSG.name) + "] in Function [" + CommonQueries.getContainingFunction(lockEvent).getAttr(XCSG.name) + "]");
