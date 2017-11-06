@@ -143,18 +143,6 @@ public class LSAPUtils {
 	}
 	
 	/**
-	 * Finds a loop-free CFG for <code>function</code>.
-	 * 
-	 * @param function A {@link Q} corresponding to a {@link XCSG#Function} node.
-	 * @return A {@link Q} corresponding to the CFG of <code>function</code> without the {@link XCSG#ControlFlowBackEdge}s.
-	 */
-	public static Q loopFreeCFG(Q function){
-		Q cfg = CommonQueries.cfg(function);
-		Q cfgBackEdges = cfg.edges(XCSG.ControlFlowBackEdge);
-		return cfg.differenceEdges(cfgBackEdges);
-	}
-	
-	/**
 	 * Finds the Matching Pair Graph (MPG) for the given <code>callSites</code> given the <code>lockFunctionCallsQ</code> and <code>unlockFunctionCallsQ</code>.
 	 * 
 	 * @param callSites The {@link XCSG#CallSite} for the lock/unlock function calls. 

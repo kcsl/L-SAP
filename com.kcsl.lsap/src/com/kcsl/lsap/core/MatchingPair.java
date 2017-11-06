@@ -105,8 +105,7 @@ public class MatchingPair {
 
 				Node nextElement = p.get(p.indexOf(this.getFirstEvent()) + 1);
 
-				Edge edge = LSAPUtils.findDirectEdgesBetweenNodes(s.getFeasibilityChecker().getFunctionCFG(),
-						this.getFirstEvent(), nextElement).get(0);
+				Edge edge = LSAPUtils.findDirectEdgesBetweenNodes(s.getFeasibilityChecker().getLoopFreeCFGGraph(), this.getFirstEvent(), nextElement).get(0);
 				String conditionValue = edge.getAttr(XCSG.conditionValue).toString().toLowerCase();
 				if (conditionValue.equals("true") && !lockOnTrueBranch) {
 					this.setResult(VerificationResult.NOT_VALID);
@@ -232,21 +231,6 @@ public class MatchingPair {
 		}
 		LSAPUtils.log("Cannot find a path containing the first node [" + this.getFirstEvent().getAttr(XCSG.name) + "] and the second node [" + (nodes[1] == null ? "NULL" : nodes[1].getAttr(XCSG.name)) + "]!");
 		return null;
-	}
-	
-	public void setPath(AtlasList<Node> path) {
-		this.path = path;
-	}
-	
-	public String getPath(){
-		String result = "";
-		for(int i = 0; i < path.size(); i++){
-			result += path.get(i).attr().get(XCSG.name);
-			if(i < path.size() - 1){
-				result += " >>> ";
-			}
-		}
-		return result;
 	}
 
 	public Node getFirstEvent() {
