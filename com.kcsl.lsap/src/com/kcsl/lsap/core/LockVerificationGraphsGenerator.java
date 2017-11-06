@@ -29,6 +29,9 @@ import com.kcsl.lsap.core.MatchingPair;
 import com.kcsl.lsap.utils.DotGraphExportUtils;
 import com.kcsl.lsap.utils.LSAPUtils;
 
+/**
+ * This class saves and displays the verification graph results.
+ */
 public class LockVerificationGraphsGenerator {
 	
 	/**
@@ -117,6 +120,13 @@ public class LockVerificationGraphsGenerator {
 		this.graphsOutputDirectory = graphsOutputDirectoryPath;
 	}
 	
+	/**
+	 * Processes the given <code>lock</code> to save/display its verification graphs.
+	 * 
+	 * @param lock The {@link XCSG#ControlFlow_Node} contains a call to lock.
+	 * @param status The {@link VerificationStatus} for the given <code>lock</code>.
+	 * @param displayGraphs Whether to display verification graphs to the user.
+	 */
 	public void process(Node lock, VerificationStatus status, boolean displayGraphs){
 		// STEP 1: CREATE A LOCK FOLDER
 		if(VerificationProperties.isSaveVerificationGraphs()) {
@@ -137,32 +147,7 @@ public class LockVerificationGraphsGenerator {
 		}
 		
 		// STEP 2: CREATE THE MPG FILE FOR THE LOCK
-		Q mpgForLock = Common.empty();
-		if(status.equals(VerificationStatus.UNPAIRED)){
-			Node containingFunctionNode = CommonQueries.getContainingFunction(lock);
-			mpgForLock = this.mpg.forward(Common.toQ(containingFunctionNode));	
-		}else{
-			mpgForLock = this.mpgForLock(lock, unlocks);
-		}
-		mpgForLock = mpgForLock.retainEdges();
-		Graph mpgGraph = mpgForLock.eval();
-		
-		if(displayGraphs){
-			DisplayUtil.displayGraph(mpgGraph);
-		}
-		
-		if(VerificationProperties.isSaveVerificationGraphs()) {
-			if(VerificationProperties.saveGraphsInDotFormat()){
-				com.alexmerz.graphviz.objects.Graph mpgDotGraph = DotGraphExportUtils.dotify(mpgGraph, null);
-				String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphDotFileNameExtension());
-				DotGraphExportUtils.saveDOTGraph(mpgDotGraph, this.currentLockGraphsOutputDirectory, mpgGraphFileName);
-			}else{
-				try{
-					String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphImageFileNameExtension());
-					SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, mpgGraphFileName), mpgGraph).join();
-				} catch (InterruptedException e) {}	
-			}
-		}
+		Q mpgForLock = this.saveDisplayMPG(lock, status, unlocks, displayGraphs);
 		
 		// STEP 3: CREATE THE CFG & EFG FOR EACH FUNCTION IN THE LOCK MPG
 		Q mpgFunctionsQ = mpgForLock.difference(mpgForLock.leaves());
@@ -195,61 +180,132 @@ public class LockVerificationGraphsGenerator {
 			markup.set(unlockEvents, MarkupProperty.NODE_BACKGROUND_COLOR, Color.GREEN);
 			markup.set(callsiteEvents, MarkupProperty.NODE_BACKGROUND_COLOR, Color.BLUE);
 			
-			// STEP 3A: SAVE CFG
-			long nodes = cfgGraph.nodes().size();
-			long edges = cfgGraph.edges().size();
-			long conditions = cfgGraph.nodes().tagged(XCSG.ControlFlowCondition).size();
-			
-			if(displayGraphs){
-				DisplayUtil.displayGraph(markup, cfgGraph);
+			this.saveDisplayCFG(cfgGraph, methodName, sourceFile, markup, displayGraphs);
+			this.saveDisplayPCG(cfg, methodName, sourceFile, eventNodes, markup, displayGraphs);
+		}
+	}
+	
+	/**
+	 * Creates and saves the MPG for the given <code>lock</code>.
+	 * 
+	 * @param lock The {@link XCSG#ControlFlow_Node} contains a call to lock.
+	 * @param status The {@link VerificationStatus} for the given <code>lock</code>.
+	 * @param unlocks A list of {@link XCSG#ControlFlow_Node}s matched with the given <code>lock</code>.
+	 * @param displayGraphs Whether to display verification graphs to the user.
+	 * @return An MPG.
+	 */
+	private Q saveDisplayMPG(Node lock, VerificationStatus status, AtlasSet<Node> unlocks, boolean displayGraphs) {
+		Q mpgForLock = Common.empty();
+		if(status.equals(VerificationStatus.UNPAIRED)){
+			Node containingFunctionNode = CommonQueries.getContainingFunction(lock);
+			mpgForLock = this.mpg.forward(Common.toQ(containingFunctionNode));	
+		}else{
+			mpgForLock = this.mpgForLock(lock, unlocks);
+		}
+		mpgForLock = mpgForLock.retainEdges();
+		Graph mpgGraph = mpgForLock.eval();
+		
+		if(displayGraphs){
+			DisplayUtil.displayGraph(mpgGraph);
+		}
+		
+		if(VerificationProperties.isSaveVerificationGraphs()) {
+			if(VerificationProperties.saveGraphsInDotFormat()){
+				com.alexmerz.graphviz.objects.Graph mpgDotGraph = DotGraphExportUtils.dotify(mpgGraph, null);
+				String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphDotFileNameExtension());
+				DotGraphExportUtils.saveDOTGraph(mpgDotGraph, this.currentLockGraphsOutputDirectory, mpgGraphFileName);
+			}else{
+				try{
+					String mpgGraphFileName = String.format(MPG_GRAPH_FILE_NAME_PATTERN, VerificationProperties.getGraphImageFileNameExtension());
+					SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, mpgGraphFileName), mpgGraph).join();
+				} catch (InterruptedException e) {}	
 			}
-			
-			if(VerificationProperties.isSaveVerificationGraphs()) {
-				if(VerificationProperties.saveGraphsInDotFormat()){
-					com.alexmerz.graphviz.objects.Graph cfgDotGraph = DotGraphExportUtils.dotify(cfgGraph, markup);
-					String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
-					DotGraphExportUtils.saveDOTGraph(cfgDotGraph, this.currentLockGraphsOutputDirectory, cfgFileName);
-				}else{
-					try{
-						String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
-						SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, cfgFileName), cfgGraph, markup).join();
-					} catch (InterruptedException e) {}
-				}
+		}
+		return mpgForLock;
+	}
+	
+	/**
+	 * Creates a saves the CFG given <codecfgGraph</code>.
+	 * 
+	 * @param cfgGraph The {@link Graph} to be saved.
+	 * @param methodName A {@link String} corresponding to the function name associated with the <code>cfgGraph</code>.
+	 * @param sourceFile The source file for the <code>methodName</code>.
+	 * @param markup An instance of {@link Markup} defined on this <code>cfgGraph</code>.
+	 * @param displayGraphs Whether to display verification graphs to the user. 
+	 */
+	private void saveDisplayCFG(Graph cfgGraph, String methodName, String sourceFile, Markup markup, boolean displayGraphs) {
+		long nodes = cfgGraph.nodes().size();
+		long edges = cfgGraph.edges().size();
+		long conditions = cfgGraph.nodes().tagged(XCSG.ControlFlowCondition).size();
+		
+		if(displayGraphs){
+			DisplayUtil.displayGraph(markup, cfgGraph);
+		}
+		
+		if(VerificationProperties.isSaveVerificationGraphs()) {
+			if(VerificationProperties.saveGraphsInDotFormat()){
+				com.alexmerz.graphviz.objects.Graph cfgDotGraph = DotGraphExportUtils.dotify(cfgGraph, markup);
+				String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
+				DotGraphExportUtils.saveDOTGraph(cfgDotGraph, this.currentLockGraphsOutputDirectory, cfgFileName);
+			}else{
+				try{
+					String cfgFileName = String.format(CFG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
+					SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, cfgFileName), cfgGraph, markup).join();
+				} catch (InterruptedException e) {}
 			}
-			
-			PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), eventNodes);
-			Q pcgQ = pcg.getPCG();
-			Graph pcgGraph = pcgQ.eval();
-			
-			// STEP 3A: SAVE PCG
-			nodes = pcgGraph.nodes().size();
-			edges = pcgGraph.edges().size();
-			conditions = 0;
-			for(Node node : pcgGraph.nodes()){
-				if(pcgGraph.edges(node, NodeDirection.OUT).size() > 1){
-					conditions++;
-				}
+		}
+	}
+
+	/**
+	 * Creates a saves the PCG corresponding to the given <code>cfg</code> and <code>eventNodes</code>.
+	 * 
+	 * @param cfg The CFG from which the PCG to be created.
+	 * @param methodName A {@link String} corresponding to the function name associated with the <code>cfg</code>.
+	 * @param sourceFile The source file for the <code>methodName</code>.
+	 * @param eventNodes A list of event nodes to be used for {@link PCG} construction from the <code>cfg</code>.
+	 * @param markup An instance of {@link Markup} defined on this <code>cfg</code>.
+	 * @param displayGraphs  Whether to display verification graphs to the user. 
+	 */
+	private void saveDisplayPCG(Q cfg, String methodName, String sourceFile, Q eventNodes, Markup markup, boolean displayGraphs) {
+		PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), eventNodes);
+		Q pcgQ = pcg.getPCG();
+		Graph pcgGraph = pcgQ.eval();
+		
+		// STEP 3A: SAVE PCG
+		long nodes = pcgGraph.nodes().size();
+		long edges = pcgGraph.edges().size();
+		long conditions = 0;
+		for(Node node : pcgGraph.nodes()){
+			if(pcgGraph.edges(node, NodeDirection.OUT).size() > 1){
+				conditions++;
 			}
-			
-			if(displayGraphs){
-				DisplayUtil.displayGraph(markup, pcgGraph);
-			}
-			
-			if(VerificationProperties.isSaveVerificationGraphs()) {
-				if(VerificationProperties.saveGraphsInDotFormat()){
-					com.alexmerz.graphviz.objects.Graph efgDotGraph = DotGraphExportUtils.dotify(pcgGraph, markup);
-					String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
-					DotGraphExportUtils.saveDOTGraph(efgDotGraph, this.currentLockGraphsOutputDirectory, pcgFileName);
-				}else{
-					try {
-						String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
-						SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, pcgFileName), pcgGraph, markup).join();
-					} catch (InterruptedException e) {}
-				}
+		}
+		
+		if(displayGraphs){
+			DisplayUtil.displayGraph(markup, pcgGraph);
+		}
+		
+		if(VerificationProperties.isSaveVerificationGraphs()) {
+			if(VerificationProperties.saveGraphsInDotFormat()){
+				com.alexmerz.graphviz.objects.Graph efgDotGraph = DotGraphExportUtils.dotify(pcgGraph, markup);
+				String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphDotFileNameExtension());
+				DotGraphExportUtils.saveDOTGraph(efgDotGraph, this.currentLockGraphsOutputDirectory, pcgFileName);
+			}else{
+				try {
+					String pcgFileName = String.format(PCG_GRAPH_FILE_NAME_PATTERN, methodName, sourceFile, nodes, edges, conditions, VerificationProperties.getGraphImageFileNameExtension());
+					SaveUtil.saveGraph(new File(this.currentLockGraphsOutputDirectory, pcgFileName), pcgGraph, markup).join();
+				} catch (InterruptedException e) {}
 			}
 		}
 	}
 	
+	/**
+	 * Creates the parent directory where the verification results will be stored.
+	 * 
+	 * @param lock The {@link XCSG#ControlFlow_Node} contains a call to lock.
+	 * @param status The {@link VerificationStatus} for the given <code>lock</code>.
+	 * @return true: if the directories create is successful, otherwise false.
+	 */
 	private boolean createContainingDirectory(Node lock, VerificationStatus status){
 		SourceCorrespondence sourceCorrespondence = (SourceCorrespondence) lock.getAttr(XCSG.sourceCorrespondence);
 		String sourceCorrespondenceString = "<external>";
@@ -269,6 +325,13 @@ public class LockVerificationGraphsGenerator {
 		return true;
 	}
 	
+	/**
+	 * Constructs a variation of the original MPG specific to this <code>lock</code>.
+	 * 
+	 * @param lock The {@link XCSG#ControlFlow_Node} contains a call to lock.
+	 * @param unlockFunctionCalls A list of {@link XCSG#ControlFlow_Node}s calling unlock that are matching with this <code>lock</code>.
+	 * @return A {@link Q} for the constructed MPG.
+	 */
 	private Q mpgForLock(Node lock, AtlasSet<Node> unlockFunctionCalls){
 		Q lockFunction = CommonQueries.getContainingFunctions(Common.toQ(lock));
 		Q unlockFunctions = CommonQueries.getContainingFunctions(Common.toQ(unlockFunctionCalls));
@@ -293,6 +356,16 @@ public class LockVerificationGraphsGenerator {
 		return result;
 	}
 	
+	/**
+	 * Compiles a list of {@link Q}s for the events of interest in this given <code>cfg</code>.
+	 * 
+	 * @param cfg The CFG of interest.
+	 * @param locks The lock function calls.
+	 * @param unlocks The unlock function calls.
+	 * @param mpgFunctions The set of {@link XCSG#Function}s in the MPG.
+	 * @return A list of three elements: the first element contains the events that call lock, the second element contains the events the call unlock,
+	 * the last element contains the list of events the call functions within the MPG.
+	 */
 	private ArrayList<Q> getEventNodesForCFG(Q cfg, Q locks, Q unlocks, Q mpgFunctions){
 		ArrayList<Q> results = new ArrayList<Q>();
 		Q cfgNodes = cfg.nodes(XCSG.ControlFlow_Node);
