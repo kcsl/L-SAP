@@ -31,7 +31,7 @@ The bug was spread across all the release candiates of `3.19-rc1` through `3.19-
 
 Function `fnic_handle_fip_timer` has an unpaired lock `spin_lock_irqsave(&fnic->vlans_lock, flags)` at line 1284. The bug occurs when variable `vlan->state` has the value of `FIP_VLAN_AVAIL` when entering the switch block at line 1298. The switch block does not have a case to handle the value `FIP_VLAN_AVAIL`. Thus causing the function to return without unlocking the spin object `&fnic->vlans_lock`.
 
-The bug has been reported and accepted, however it is still persisting on the latest Linux kernel branch.
+The bug has been reported and accepted, however it is still persisting on the latest Linux kernel branch as of 4.14.
 
 ## Bug - Paper Case Study III            
 **Version:** `3.18-rc1`
