@@ -120,7 +120,7 @@ public class MatchingPair {
 		}
 
 		// The first event is a locking event
-		if (this.getSecondEvent().taggedWith(PCGNode.EventFlow_Master_Exit)) {
+		if (this.getSecondEvent().taggedWith(PCGNode.PCGMasterExit)) {
 			// Lock is not followed by Unlock (Error Case)
 			if (!VerificationProperties.isFeasibilityCheckingEnabled() || this.checkPathFeasibility(summaries)) {
 				// Path is (Feasible) >> An actual (Error Case)
@@ -157,7 +157,7 @@ public class MatchingPair {
 			// The two events are in the same function
 			FunctionSummary summary = summaries.get(functionForE1);
 			FeasibilityChecker feasibilityChecker = summary.getFeasibilityChecker();
-			if (this.getSecondEvent().taggedWith(PCGNode.EventFlow_Master_Exit)) {
+			if (this.getSecondEvent().taggedWith(PCGNode.PCGMasterExit)) {
 				return feasibilityChecker.checkPathFeasibility(this.getFirstEvent(), null, this.excludedNodes);
 			}
 			return feasibilityChecker.checkPathFeasibility(this.getFirstEvent(), this.getSecondEvent(),
@@ -172,7 +172,7 @@ public class MatchingPair {
 			FunctionSummary summaryF2 = summaries.get(functionForE2);
 			FeasibilityChecker feasibilityCheckerF2 = summaryF2.getFeasibilityChecker();
 			boolean isFeasibleF2 = false;
-			if (this.getSecondEvent().taggedWith(PCGNode.EventFlow_Master_Exit)) {
+			if (this.getSecondEvent().taggedWith(PCGNode.PCGMasterExit)) {
 				isFeasibleF2 = feasibilityCheckerF2.checkPathFeasibility(null, null, this.excludedNodes);
 			} else {
 				isFeasibleF2 = feasibilityCheckerF2.checkPathFeasibility(null, this.getSecondEvent(),
@@ -193,7 +193,7 @@ public class MatchingPair {
 		Node functionForE2 = CommonQueries.getContainingFunction(this.getSecondEvent());
 		if (functionForE1.equals(functionForE2)) {
 			// The two events are in the same function
-			if (this.getSecondEvent().taggedWith(PCGNode.EventFlow_Master_Exit)) {
+			if (this.getSecondEvent().taggedWith(PCGNode.PCGMasterExit)) {
 				return new Node[] { this.getFirstEvent(), null };
 			}
 			return new Node[] { this.getFirstEvent(), this.getSecondEvent() };

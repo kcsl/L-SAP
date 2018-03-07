@@ -4,6 +4,8 @@ import static com.ensoftcorp.atlas.core.script.Common.universe;
 
 import java.awt.Color;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.ensoftcorp.atlas.c.core.query.Attr;
@@ -22,6 +24,7 @@ import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.ensoftcorp.open.pcg.common.PCGFactory;
 import com.kcsl.lsap.VerificationProperties;
+import com.kcsl.lsap.core.NodeSourceCorrespondenceSorter;
 import com.kcsl.lsap.core.Reporter;
 import com.kcsl.lsap.core.Verifier;
 
@@ -75,9 +78,16 @@ public class SignatureVerificationUtils {
 		// 2. Find the {@link XCSG#ParameterPass} nodes at {@link XCSG#parameterIndex} "0" that are passed to <code>lockUnlockFunctionCallSites</code>.
 		Q parametersPassedToLockUnlockFunctionCallSites = universe().edges(XCSG.ParameterPassedTo).predecessors(lockUnlockFunctionCallSites).selectNode(XCSG.parameterIndex, 0);
 
+		// sort signatures by source correspondence
 		AtlasSet<Node> signatureNodes = signatures.eval().nodes();
-		int signatureProcessingIndex = 0;
+		List<Node> sortedSignatures = new ArrayList<Node>();
 		for(Node signatureNode : signatureNodes){
+			sortedSignatures.add(signatureNode);
+		}
+		Collections.sort(sortedSignatures, new NodeSourceCorrespondenceSorter());
+		
+		int signatureProcessingIndex = 0;
+		for(Node signatureNode : sortedSignatures){
 			long analysisStartTime = System.currentTimeMillis();
 			LSAPUtils.log("Processing signature [" + signatureNode.getAttr(XCSG.name) + "] " + (++signatureProcessingIndex) + "/" + signatureNodes.size());
 			Q signature = Common.toQ(signatureNode);
