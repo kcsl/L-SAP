@@ -17,4 +17,4 @@ Ready to get started?
 Need additional resources? Checkout the [Javadocs](/L-SAP/javadoc/index.html) or grab a copy of the [source](https://github.com/kcsl/L-SAP).
 
 ## Pairing Information/Evidence
-A complete listing of all the pairing information (graph evidence) produced by L-SAP is available at [http://kcsl.ece.iastate.edu/linux-results](http://kcsl.ece.iastate.edu/linux-results/)!
+A complete listing of all the pairing information (graph evidence) produced by L-SAP is available at [https://lsap.knowledgecentricsoftwarelab.com](https://lsap.knowledgecentricsoftwarelab.com)!
