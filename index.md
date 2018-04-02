@@ -14,7 +14,7 @@ Ready to get started?
 2. Then check out the provided [tutorials](/L-SAP/tutorials) to run the analysis.
 
 ## Source Code
-Need additional resources? Checkout the [Javadocs](/L-SAP/javadoc/index.html) or grab a copy of the [source](//github.com/kcsl/L-SAP).
+Need additional resources? Checkout the [Javadocs](/L-SAP/javadoc/index.html) or grab a copy of the [source](https://github.com/kcsl/L-SAP).
 
 ## Pairing Information/Evidence
-A complete listing of all the pairing information (graph evidence) produced by L-SAP is available at [//lsap.knowledgecentricsoftwarelab.com](//lsap.knowledgecentricsoftwarelab.com)!
+A complete listing of all the pairing information (graph evidence) produced by L-SAP is available at [https://lsap.knowledgecentricsoftwarelab.com](https://lsap.knowledgecentricsoftwarelab.com)!
