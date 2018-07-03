@@ -11,6 +11,7 @@ import com.ensoftcorp.atlas.core.db.map.AtlasGraphKeyHashMap;
 import com.ensoftcorp.atlas.core.db.map.AtlasMap;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
+import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
@@ -345,7 +346,7 @@ public class Verifier {
 		}
 		
 		reporter.setOnlyDandlingLockEvents(actualDanglingEvents);
-		this.danglingLocks.addAll(danglingE1Events);
+		this.danglingLocks.addAll(actualDanglingEvents);
 		
 		/**
 		 * Compute missing lock events from the verification.
