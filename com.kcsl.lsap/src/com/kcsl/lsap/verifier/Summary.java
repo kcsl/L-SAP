@@ -71,11 +71,7 @@ public class Summary {
 		return this.contains(otherNodeSummary.getEventToInducingNodesMap());
 	}
 	
-	public boolean contains(EnumMap<Event, AtlasSet<Node>> givenEventToInducingNodesMap) {
-		if(this.eventToInducingNodesMap.size() != givenEventToInducingNodesMap.size()) {
-			return false;
-		}
-		
+	public boolean contains(EnumMap<Event, AtlasSet<Node>> givenEventToInducingNodesMap) {		
 		for(Event event: givenEventToInducingNodesMap.keySet()) {
 			if(this.eventToInducingNodesMap.containsKey(event)) {
 				AtlasSet<Node> givenEventInducingNodes = givenEventToInducingNodesMap.get(event);
