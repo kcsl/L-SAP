@@ -267,7 +267,7 @@ public class LockVerificationGraphsGenerator {
 	 * @param displayGraphs  Whether to display verification graphs to the user. 
 	 */
 	private void saveDisplayPCG(Q cfg, String methodName, String sourceFile, Q eventNodes, Markup markup, boolean displayGraphs) {
-		PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), eventNodes);
+		PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), eventNodes, true);
 		Q pcgQ = pcg.getPCG();
 		Graph pcgGraph = pcgQ.eval();
 		

@@ -194,7 +194,7 @@ public class SignatureVerificationUtils {
 			markup.set(mpgFunctionCallEvents, MarkupProperty.NODE_BACKGROUND_COLOR, Color.BLUE);
 
 			LSAPUtils.log("Creating PCG for [" + mpgFunctionName + "].");
-			PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), allEvents);
+			PCG pcg = PCGFactory.create(cfg, cfg.nodes(XCSG.controlFlowRoot), cfg.nodes(XCSG.controlFlowExitPoint), allEvents, true);
 			functionPCGMap.put(mpgNode, pcg);
 			functionEventsMap.put(mpgNode, events);
 		}
