@@ -57,16 +57,20 @@ public class FunctionSummary {
 		return this.pcg.getMasterExit();
 	}
 	
-	public void compute() {
+//	public void compute() {
+//		Q loopBackEdges = this.pcg.getPCG().edges(PCGEdge.PCGBackEdge, PCGEdge.PCGReentryEdge);
+//		Graph acyclicPCG = this.pcg.getPCG().differenceEdges(loopBackEdges).eval();
+//		Node entryNode = this.pcg.getMasterEntry();
+//		Node exitNode = this.pcg.getMasterExit();
+//		this.computeEntryNodeReachableSummary(acyclicPCG, entryNode, exitNode);
+//		//this.computeExitNodeReachableSummary(acyclicPCG, entryNode, exitNode);
+//	}
+	
+	public void computeEntryNodeReachableSummary() {
 		Q loopBackEdges = this.pcg.getPCG().edges(PCGEdge.PCGBackEdge, PCGEdge.PCGReentryEdge);
-		Graph acyclicPCG = this.pcg.getPCG().differenceEdges(loopBackEdges).eval();
+		Graph graph = this.pcg.getPCG().differenceEdges(loopBackEdges).eval();
 		Node entryNode = this.pcg.getMasterEntry();
 		Node exitNode = this.pcg.getMasterExit();
-		this.computeEntryNodeReachableSummary(acyclicPCG, entryNode, exitNode);
-		this.computeExitNodeReachableSummary(acyclicPCG, entryNode, exitNode);
-	}
-	
-	private void computeEntryNodeReachableSummary(Graph graph, Node entryNode, Node exitNode) {
 		Queue<Node> queue = new LinkedList<Node>();
 		queue.add(entryNode);
 		while(!queue.isEmpty()) {
@@ -90,29 +94,33 @@ public class FunctionSummary {
 		}
 	}
 	
-	private void computeExitNodeReachableSummary(Graph graph, Node entryNode, Node exitNode) {
-		Queue<Node> queue = new LinkedList<Node>();
-		queue.add(exitNode);
-		while(!queue.isEmpty()) {
-			Node currentNode = queue.poll();
-			if(this.lockEventNodes.contains(currentNode)) {
-				this.exitNodeReachableSummary.add(Event.LOCK, currentNode);
-			} else if (this.unlockEventNodes.contains(currentNode)) {
-				this.exitNodeReachableSummary.add(Event.UNLOCK, currentNode);
-			} else if (this.successorsFunctionSummaryMap.containsKey(currentNode)) {
-				Summary successorReachableSummaryFromExitNode = this.successorsFunctionSummaryMap.get(currentNode).getExitNodeReachableSummary();
-				this.exitNodeReachableSummary.update(successorReachableSummaryFromExitNode);
-			} else if (currentNode.equals(entryNode)) {
-				this.exitNodeReachableSummary.addAll(Event.NONE, new AtlasHashSet<Node>());
-			} else {
-				AtlasSet<Edge> inEdges = graph.edges(currentNode, NodeDirection.IN);
-				for(Edge edge: inEdges) {
-					Node fromNode = edge.from();
-					queue.add(fromNode);
-				}
-			}
-		}
+	public void setExitNodeReachableSummary(Summary exitNodeReachableSummary) {
+		this.exitNodeReachableSummary = exitNodeReachableSummary;
 	}
+	
+//	private void computeExitNodeReachableSummary(Graph graph, Node entryNode, Node exitNode) {
+//		Queue<Node> queue = new LinkedList<Node>();
+//		queue.add(exitNode);
+//		while(!queue.isEmpty()) {
+//			Node currentNode = queue.poll();
+//			if(this.lockEventNodes.contains(currentNode)) {
+//				this.exitNodeReachableSummary.add(Event.LOCK, currentNode);
+//			} else if (this.unlockEventNodes.contains(currentNode)) {
+//				this.exitNodeReachableSummary.add(Event.UNLOCK, currentNode);
+//			} else if (this.successorsFunctionSummaryMap.containsKey(currentNode)) {
+//				Summary successorReachableSummaryFromExitNode = this.successorsFunctionSummaryMap.get(currentNode).getExitNodeReachableSummary();
+//				this.exitNodeReachableSummary.update(successorReachableSummaryFromExitNode);
+//			} else if (currentNode.equals(entryNode)) {
+//				this.exitNodeReachableSummary.addAll(Event.NONE, new AtlasHashSet<Node>());
+//			} else {
+//				AtlasSet<Edge> inEdges = graph.edges(currentNode, NodeDirection.IN);
+//				for(Edge edge: inEdges) {
+//					Node fromNode = edge.from();
+//					queue.add(fromNode);
+//				}
+//			}
+//		}
+//	}
 	
 	public void storeMatchingPairs(AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap) {
 		this.matchingPairsMap = matchingPairsMap;

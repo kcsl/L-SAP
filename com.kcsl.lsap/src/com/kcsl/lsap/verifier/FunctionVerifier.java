@@ -126,18 +126,23 @@ public class FunctionVerifier {
 		this.successorsFunctionSummaries.clear();
 		this.successorsFunctionSummaries = summary;
 
+		Node entryNode = this.pcg.getMasterEntry();
 		Summary masterEntryPreNodeSummary = new Summary();
+		masterEntryPreNodeSummary = this.preNodeSummaryCache.get(entryNode);
 		masterEntryPreNodeSummary.addAll(Event.NONE, new AtlasHashSet<Node>());
-		this.traverse(this.pcg.getMasterEntry(), masterEntryPreNodeSummary);
+		
+		this.traverse(this.pcg.getMasterEntry());
 		
 		this.summary = new FunctionSummary(this.currentFunction, this.pcg, this.lockEventNodes, this.multiStateLockEventNodes, this.unlockEventNodes, this.successorsFunctionSummaries);
-		this.summary.compute();
+		this.summary.computeEntryNodeReachableSummary();
+		this.summary.setExitNodeReachableSummary(this.preNodeSummaryCache.get(this.pcg.getMasterExit()));
 		this.summary.storeMatchingPairs(this.matchingPairsMap);
 
 		return this.summary;
 	}
 	
-	private void traverse(Node currentNode, Summary preNodeSummary) { 
+	private void traverse(Node currentNode) {
+		Summary preNodeSummary = this.preNodeSummaryCache.get(currentNode);
 		Summary postNodeSummary = new Summary();
 		if(this.successorsFunctionSummaries.containsKey(currentNode)) {
 			// currentNode corresponds to a function call, FunctionSummary for currentNode must exist.
@@ -189,17 +194,18 @@ public class FunctionVerifier {
 		AtlasSet<Edge> outEdges = this.pcg.getPCG().forwardStep(Common.toQ(currentNode)).eval().edges();
 		for(Edge edge: outEdges) {
 			Node successor = edge.to();
+			Summary successorPreNodeSummary = this.preNodeSummaryCache.get(successor);
 			if(edge.taggedWith(PCG.PCGEdge.PCGBackEdge) || edge.taggedWith(PCG.PCGEdge.PCGReentryEdge)) {
 				// previously traversed path, do we have new events along the path
-				Summary successorPreNodeSummary = this.preNodeSummaryCache.get(successor);
 				boolean skipVisitingSuccessor = successorPreNodeSummary.contains(postNodeSummary);
 				if(!skipVisitingSuccessor) {
 					successorPreNodeSummary.update(postNodeSummary);
-					this.traverse(successor, successorPreNodeSummary);
+					this.traverse(successor);
 				}
 			} else {
 				// newly traversed path
-				this.traverse(successor, postNodeSummary);
+				successorPreNodeSummary.update(postNodeSummary);
+				this.traverse(successor);
 			}
 		}
 	}
