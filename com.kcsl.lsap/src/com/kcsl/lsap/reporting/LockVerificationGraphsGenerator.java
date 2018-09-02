@@ -196,7 +196,7 @@ public class LockVerificationGraphsGenerator {
 	 */
 	private Q saveDisplayMPG(Node lock, VerificationStatus status, AtlasSet<Node> unlocks, boolean displayGraphs) {
 		Q mpgForLock = Common.empty();
-		if(status.equals(VerificationStatus.UNPAIRED)){
+		if(status.equals(VerificationStatus.UNPAIRED) || status.equals(VerificationStatus.DEADLOCK)){
 			Node containingFunctionNode = CommonQueries.getContainingFunction(lock);
 			mpgForLock = this.mpg.forward(Common.toQ(containingFunctionNode));	
 		}else{
