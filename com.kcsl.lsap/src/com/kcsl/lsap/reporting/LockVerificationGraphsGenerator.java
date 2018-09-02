@@ -1,4 +1,4 @@
-package com.kcsl.lsap.core;
+package com.kcsl.lsap.reporting;
 
 import java.awt.Color;
 import java.io.File;
@@ -25,9 +25,9 @@ import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.ensoftcorp.open.pcg.common.PCGFactory;
 import com.kcsl.lsap.VerificationProperties;
-import com.kcsl.lsap.core.MatchingPair;
 import com.kcsl.lsap.utils.DotGraphExportUtils;
 import com.kcsl.lsap.utils.LSAPUtils;
+import com.kcsl.lsap.verifier.MatchingPair;
 
 /**
  * This class saves and displays the verification graph results.

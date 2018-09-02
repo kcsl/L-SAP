@@ -24,9 +24,8 @@ import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.ensoftcorp.open.pcg.common.PCGFactory;
 import com.kcsl.lsap.VerificationProperties;
-import com.kcsl.lsap.core.NodeSourceCorrespondenceSorter;
-import com.kcsl.lsap.core.Reporter;
-import com.kcsl.lsap.core.Verifier;
+import com.kcsl.lsap.reporting.Reporter;
+import com.kcsl.lsap.verifier.Verifier;
 
 /**
  * A class containing utility functions to initiate the signature verification.

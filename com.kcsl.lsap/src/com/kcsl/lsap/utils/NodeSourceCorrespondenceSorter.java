@@ -1,4 +1,4 @@
-package com.kcsl.lsap.core;
+package com.kcsl.lsap.utils;
 
 import java.util.Comparator;
 

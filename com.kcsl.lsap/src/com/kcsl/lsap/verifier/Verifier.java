@@ -1,4 +1,4 @@
-package com.kcsl.lsap.core;
+package com.kcsl.lsap.verifier;
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -11,17 +11,17 @@ import com.ensoftcorp.atlas.core.db.map.AtlasGraphKeyHashMap;
 import com.ensoftcorp.atlas.core.db.map.AtlasMap;
 import com.ensoftcorp.atlas.core.db.set.AtlasHashSet;
 import com.ensoftcorp.atlas.core.db.set.AtlasSet;
-import com.ensoftcorp.atlas.core.log.Log;
 import com.ensoftcorp.atlas.core.query.Q;
 import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.kcsl.lsap.VerificationProperties;
-import com.kcsl.lsap.core.FunctionVerifier.PathStatus;
-import com.kcsl.lsap.core.LockVerificationGraphsGenerator.VerificationStatus;
-import com.kcsl.lsap.core.MatchingPair.VerificationResult;
+import com.kcsl.lsap.reporting.LockVerificationGraphsGenerator;
+import com.kcsl.lsap.reporting.LockVerificationGraphsGenerator.VerificationStatus;
+import com.kcsl.lsap.reporting.Reporter;
 import com.kcsl.lsap.utils.LSAPUtils;
+import com.kcsl.lsap.verifier.MatchingPair.VerificationResult;
 
 /**
  * A class that sorts out the verification process and aggregate the verification results.
@@ -201,11 +201,11 @@ public class Verifier {
 		for(Node successor : successors)
 			successorFunctionSummaries.put(successor, this.summaries.get(successor));
 		
-		FunctionVerifier functionVerifier = new FunctionVerifier(function, pcg, successorFunctionSummaries, events);	
+		FunctionVerifier functionVerifier = new FunctionVerifier(function, pcg, events, successorFunctionSummaries);	
 		FunctionSummary summary = functionVerifier.run();
-		this.lockFunctionCallEvents.addAll(summary.getLockFunctionCallEvents());
-		this.multiStateLockFunctionCallEvents.addAll(summary.getE1MayEvents());
-		this.unlockFunctionCallEvents.addAll(summary.getUnlockFunctionCallEvents());
+		this.lockFunctionCallEvents.addAll(summary.getLockEventNodes());
+		this.multiStateLockFunctionCallEvents.addAll(summary.getMultiStateLockEventNodes());
+		this.unlockFunctionCallEvents.addAll(summary.getUnlockEventNodes());
 		
 		for(Node node : summary.getMatchingPairsMap().keySet()){
 			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
@@ -228,12 +228,11 @@ public class Verifier {
 		reporter.setLockEvents(this.lockFunctionCallEvents);
 		reporter.setUnlockEvents(this.unlockFunctionCallEvents);
 		
-		int outStatus;
 		for(Node function : this.summaries.keySet()){
 			if(this.mpg.predecessors(Common.toQ(function)).eval().nodes().isEmpty()){
-				outStatus = this.summaries.get(function).getNodeToPathStatus();
-				if(((outStatus & PathStatus.LOCK) != 0) || (outStatus == PathStatus.LOCK || outStatus == (PathStatus.LOCK | PathStatus.THROUGH))){
-					this.appendMatchingPairs(this.summaries.get(function).getNodeToEventsAlongPath());
+				Summary exitNodeReachableSummary = this.summaries.get(function).getExitNodeReachableSummary();
+				if(exitNodeReachableSummary.contains(Event.LOCK)) {
+					this.reportDanlingLocks(exitNodeReachableSummary.inducingNodesForEvent(Event.LOCK), this.summaries.get(function).getMasterExitNode());
 				}
 			}
 		}
@@ -365,6 +364,17 @@ public class Verifier {
 		}
 	}
 	
+	private void reportDanlingLocks(AtlasSet<Node> lockNodes, Node masterExitNode) {
+		for (Node lockNode : lockNodes) {
+			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
+			if (this.matchingPairsMap.containsKey(lockNode)) {
+				matchingPairs = this.matchingPairsMap.get(lockNode);
+			}
+			matchingPairs.add(new MatchingPair(lockNode, masterExitNode, null));
+			this.matchingPairsMap.put(lockNode, matchingPairs);
+		}
+	}
+	
 	/**
 	 * Saves or displays the verification results.
 	 * 
@@ -403,23 +413,6 @@ public class Verifier {
 			if(lockNode == null || lockNode.equals(lock)){
 				lockVerificationGraphsGenerator.process(lock, VerificationStatus.UNPAIRED, displayInteractiveGraphsForLock);
 			}
-		}
-	}
-	
-	/**
-	 * Appends the {@link MatchingPair}s for the {@link Node}s in <code>nodes</code>.
-	 * 
-	 * @param nodes A list of {@link Node}s.
-	 */
-	private void appendMatchingPairs(AtlasSet<Node> nodes){
-		for(Node node : nodes){
-			HashSet<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
-		    	if(this.matchingPairsMap.containsKey(node)){
-		    		matchingPairs = this.matchingPairsMap.get(node);
-		    	}
-		    	FunctionSummary summary = this.summaries.get(CommonQueries.getContainingFunction(node));
-		    	matchingPairs.add(new MatchingPair(node, summary.getPCG().getMasterExit(), null));
-		    	this.matchingPairsMap.put(node, matchingPairs);
 		}
 	}
 	

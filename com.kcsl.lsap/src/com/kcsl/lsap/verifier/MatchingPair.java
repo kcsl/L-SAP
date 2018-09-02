@@ -1,4 +1,4 @@
-package com.kcsl.lsap.core;
+package com.kcsl.lsap.verifier;
 
 import java.util.ArrayList;
 import java.util.Collections;

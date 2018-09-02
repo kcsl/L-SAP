@@ -1,4 +1,4 @@
-package com.kcsl.lsap.core;
+package com.kcsl.lsap.reporting;
 
 import java.util.Date;
 
