@@ -18,10 +18,8 @@ import com.ensoftcorp.open.commons.analysis.CommonQueries;
 import com.ensoftcorp.open.pcg.common.PCG;
 import com.kcsl.lsap.VerificationProperties;
 import com.kcsl.lsap.reporting.LockVerificationGraphsGenerator;
-import com.kcsl.lsap.reporting.LockVerificationGraphsGenerator.VerificationStatus;
 import com.kcsl.lsap.reporting.Reporter;
 import com.kcsl.lsap.utils.LSAPUtils;
-import com.kcsl.lsap.verifier.MatchingPair.VerificationResult;
 
 /**
  * A class that sorts out the verification process and aggregate the verification results.
@@ -255,16 +253,16 @@ public class Verifier {
 				pair.verify(this.lockFunctionCallEvents, this.unlockFunctionCallEvents, this.mayEventsFeasibility, this.summaries);
 				LSAPUtils.log("[" + (++count) + "] " + pair.toString());
 				switch(pair.getResult()){
-				case DANGLING_LOCK:
+				case UNPAIRED:
 					danglingE1Events.add(e1Event);
 					break;
-				case DEADLOCKED:
+				case DEADLOCK:
 					doubleE1Events.add(e1Event);
 					break;
-				case SAFE:
+				case PAIRED:
 					safeE1Events.add(e1Event);
 					break;
-				case NOT_VALID:
+				case ERROR:
 					break;
 				default:
 					// TODO: Handle switch case
@@ -284,7 +282,7 @@ public class Verifier {
 			LSAPUtils.log("##########################################");
 			LSAPUtils.log("Verified Lock Events");
 			LSAPUtils.log("##########################################");
-			this.logMatchingResultsForEvents(verifiedLockEvents, VerificationResult.SAFE);
+			this.logMatchingResultsForEvents(verifiedLockEvents, VerificationResult.PAIRED);
 			LSAPUtils.log("------------------------------------------");
 		}
 		
@@ -322,7 +320,7 @@ public class Verifier {
 			LSAPUtils.log("##########################################");
 			LSAPUtils.log("Deadloced Lock Events");
 			LSAPUtils.log("##########################################");
-			this.logMatchingResultsForEvents(doubleE1Events, VerificationResult.DEADLOCKED);
+			this.logMatchingResultsForEvents(doubleE1Events, VerificationResult.DEADLOCK);
 			LSAPUtils.log("------------------------------------------");
 		}
 		
@@ -340,7 +338,7 @@ public class Verifier {
 			LSAPUtils.log("##########################################");
 			LSAPUtils.log("Dangling (Not-Verified) Lock Events");
 			LSAPUtils.log("##########################################");
-			this.logMatchingResultsForEvents(danglingE1Events, VerificationResult.DANGLING_LOCK);
+			this.logMatchingResultsForEvents(danglingE1Events, VerificationResult.UNPAIRED);
 			LSAPUtils.log("------------------------------------------");
 		}
 		
@@ -388,7 +386,7 @@ public class Verifier {
 		//Q pairedLocks = verifiedLocks.difference(partiallyLocks, danglingLocks, doubleLocks);
 		for(Node lock : this.verifiedLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PAIRED, displayInteractiveGraphsForLock);
+				lockVerificationGraphsGenerator.process(lock, VerificationResult.PAIRED, displayInteractiveGraphsForLock);
 			}
 		}
 		
@@ -396,14 +394,14 @@ public class Verifier {
 		//Q partiallyPairedLocks = partiallyLocks.difference(doubleLocks);
 		for(Node lock : this.partiallyLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.PARTIALLY_PAIRED, displayInteractiveGraphsForLock);
+				lockVerificationGraphsGenerator.process(lock, VerificationResult.PARTIALLY_PAIRED, displayInteractiveGraphsForLock);
 			}
 		}
 		
 		// A deadlock lock is only if it has deadlock
 		for(Node lock : this.deadlockedLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.DEADLOCK, displayInteractiveGraphsForLock);
+				lockVerificationGraphsGenerator.process(lock, VerificationResult.DEADLOCK, displayInteractiveGraphsForLock);
 			}
 		}
 		
@@ -411,7 +409,7 @@ public class Verifier {
 		//Q unpairedLocks = danglingLocks.difference(verifiedLocks, partiallyLocks);
 		for(Node lock : this.danglingLocks){
 			if(lockNode == null || lockNode.equals(lock)){
-				lockVerificationGraphsGenerator.process(lock, VerificationStatus.UNPAIRED, displayInteractiveGraphsForLock);
+				lockVerificationGraphsGenerator.process(lock, VerificationResult.UNPAIRED, displayInteractiveGraphsForLock);
 			}
 		}
 	}

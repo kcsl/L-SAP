@@ -28,6 +28,7 @@ import com.kcsl.lsap.VerificationProperties;
 import com.kcsl.lsap.utils.DotGraphExportUtils;
 import com.kcsl.lsap.utils.LSAPUtils;
 import com.kcsl.lsap.verifier.MatchingPair;
+import com.kcsl.lsap.verifier.VerificationResult;
 
 /**
  * This class saves and displays the verification graph results.
@@ -124,10 +125,10 @@ public class LockVerificationGraphsGenerator {
 	 * Processes the given <code>lock</code> to save/display its verification graphs.
 	 * 
 	 * @param lock The {@link XCSG#ControlFlow_Node} contains a call to lock.
-	 * @param status The {@link VerificationStatus} for the given <code>lock</code>.
+	 * @param status The {@link VerificationResult} for the given <code>lock</code>.
 	 * @param displayGraphs Whether to display verification graphs to the user.
 	 */
-	public void process(Node lock, VerificationStatus status, boolean displayGraphs){
+	public void process(Node lock, VerificationResult status, boolean displayGraphs){
 		// STEP 1: CREATE A LOCK FOLDER
 		if(VerificationProperties.isSaveVerificationGraphs()) {
 			if(!this.createContainingDirectory(lock, status)){
@@ -136,7 +137,7 @@ public class LockVerificationGraphsGenerator {
 		}
 		
 		AtlasSet<Node> unlocks = new AtlasHashSet<Node>();
-		if(!status.equals(VerificationStatus.UNPAIRED)){
+		if(!status.equals(VerificationResult.UNPAIRED)){
 			HashSet<MatchingPair> matchingPairs = this.pairs.get(lock);
 			for(MatchingPair pair : matchingPairs){
 				Node unlock = pair.getSecondEvent();
@@ -165,7 +166,7 @@ public class LockVerificationGraphsGenerator {
 			Graph cfgGraph = cfg.eval();			
 			
 			ArrayList<Q> results = null;
-			if(VerificationStatus.DEADLOCK.equals(status)){
+			if(VerificationResult.DEADLOCK.equals(status)){
 			    results = this.getEventNodesForCFG(cfg, Common.toQ(lock).union(Common.toQ(unlocks)), Common.empty() , mpgFunctionsQ);
 			}else{
 				results = this.getEventNodesForCFG(cfg, Common.toQ(lock), Common.toQ(unlocks), mpgFunctionsQ);
@@ -189,14 +190,14 @@ public class LockVerificationGraphsGenerator {
 	 * Creates and saves the MPG for the given <code>lock</code>.
 	 * 
 	 * @param lock The {@link XCSG#ControlFlow_Node} contains a call to lock.
-	 * @param status The {@link VerificationStatus} for the given <code>lock</code>.
+	 * @param status The {@link VerificationResult} for the given <code>lock</code>.
 	 * @param unlocks A list of {@link XCSG#ControlFlow_Node}s matched with the given <code>lock</code>.
 	 * @param displayGraphs Whether to display verification graphs to the user.
 	 * @return An MPG.
 	 */
-	private Q saveDisplayMPG(Node lock, VerificationStatus status, AtlasSet<Node> unlocks, boolean displayGraphs) {
+	private Q saveDisplayMPG(Node lock, VerificationResult status, AtlasSet<Node> unlocks, boolean displayGraphs) {
 		Q mpgForLock = Common.empty();
-		if(status.equals(VerificationStatus.UNPAIRED) || status.equals(VerificationStatus.DEADLOCK)){
+		if(status.equals(VerificationResult.UNPAIRED) || status.equals(VerificationResult.DEADLOCK)){
 			Node containingFunctionNode = CommonQueries.getContainingFunction(lock);
 			mpgForLock = this.mpg.forward(Common.toQ(containingFunctionNode));	
 		}else{
@@ -303,17 +304,17 @@ public class LockVerificationGraphsGenerator {
 	 * Creates the parent directory where the verification results will be stored.
 	 * 
 	 * @param lock The {@link XCSG#ControlFlow_Node} contains a call to lock.
-	 * @param status The {@link VerificationStatus} for the given <code>lock</code>.
+	 * @param status The {@link VerificationResult} for the given <code>lock</code>.
 	 * @return true: if the directories create is successful, otherwise false.
 	 */
-	private boolean createContainingDirectory(Node lock, VerificationStatus status){
+	private boolean createContainingDirectory(Node lock, VerificationResult status){
 		SourceCorrespondence sourceCorrespondence = (SourceCorrespondence) lock.getAttr(XCSG.sourceCorrespondence);
 		String sourceCorrespondenceString = "<external>";
 		if(sourceCorrespondence != null){
 			sourceCorrespondenceString = this.fixSlashes(sourceCorrespondence.toString());
 		}
 
-		String containingDirectoryName = String.format(LOCK_GRAPH_DIRECTORY_NAME_PATTERN, status.getStatusString(), lock.addressBits(), sourceCorrespondenceString, this.signtureNode.getAttr(XCSG.name).toString());
+		String containingDirectoryName = String.format(LOCK_GRAPH_DIRECTORY_NAME_PATTERN, status.toString(), lock.addressBits(), sourceCorrespondenceString, this.signtureNode.getAttr(XCSG.name).toString());
 		this.currentLockGraphsOutputDirectory = this.graphsOutputDirectory.resolve(containingDirectoryName).toFile();
 		if(this.currentLockGraphsOutputDirectory.exists()) {
 			return true;
@@ -404,26 +405,6 @@ public class LockVerificationGraphsGenerator {
 	 */
 	private String fixSlashes(String string){
 		return string.replace('/', '@');
-	}
-	
-	/**
-	 * An enumeration for the verification status.
-	 */
-	public enum VerificationStatus {
-		PAIRED("PAIRED"), // If the lock is verified on all paths.
-		PARTIALLY_PAIRED("PARTIALLY"), // If there exists a path where the lock is not paired with unlock, but other paths contain pairing of that lock.
-		DEADLOCK("DEADLOCK"), // If the lock is followed by another lock.
-		UNPAIRED("UNPAIRED"); // If the lock is not paired with any unlock on all paths.
-		
-		private String statusString;
-		
-		VerificationStatus(String statusString){
-			this.statusString = statusString;
-		}
-		
-		public String getStatusString(){
-			return this.statusString;
-		}
 	}
 	
 }

@@ -48,13 +48,6 @@ public class MatchingPair {
 	 * The {@link VerificationResult} that led to this instance of {@link MatchingPair}.
 	 */
 	private VerificationResult result;
-	
-	/**
-	 * An enumeration for the possible outcomes of the verification process.
-	 */
-	public enum VerificationResult {
-		SAFE, DEADLOCKED, DANGLING_LOCK, NOT_VALID
-	}
 
 	/**
 	 * Constructs a new instance of {@link MatchingPair} with <code>firstEvent</code> and <code>secondEvent</code> nodes along the <code>path</code>.
@@ -99,7 +92,7 @@ public class MatchingPair {
 				FunctionSummary s = summaries.get(containingFunction);
 				AtlasList<Node> p = this.getPathContainingNode(s.getFeasibilityChecker());
 				if (p == null || p.isEmpty()) {
-					this.setResult(VerificationResult.DEADLOCKED);
+					this.setResult(VerificationResult.DEADLOCK);
 					return;
 				}
 
@@ -108,10 +101,10 @@ public class MatchingPair {
 				Edge edge = LSAPUtils.findDirectEdgesBetweenNodes(s.getFeasibilityChecker().getLoopFreeCFGGraph(), this.getFirstEvent(), nextElement).get(0);
 				String conditionValue = edge.getAttr(XCSG.conditionValue).toString().toLowerCase();
 				if (conditionValue.equals("true") && !lockOnTrueBranch) {
-					this.setResult(VerificationResult.NOT_VALID);
+					this.setResult(VerificationResult.ERROR);
 					return;
 				} else if (conditionValue.equals("false") && lockOnTrueBranch) {
-					this.setResult(VerificationResult.NOT_VALID);
+					this.setResult(VerificationResult.ERROR);
 					return;
 				} else {
 					// TODO: Handle other cases specially (switch) statements
@@ -124,22 +117,22 @@ public class MatchingPair {
 			// Lock is not followed by Unlock (Error Case)
 			if (!VerificationProperties.isFeasibilityCheckingEnabled() || this.checkPathFeasibility(summaries)) {
 				// Path is (Feasible) >> An actual (Error Case)
-				this.setResult(VerificationResult.DANGLING_LOCK);
+				this.setResult(VerificationResult.UNPAIRED);
 			} else {
-				this.setResult(VerificationResult.SAFE);
+				this.setResult(VerificationResult.PAIRED);
 			}
 		} else {
 			if (lockCallEvents.contains(this.getSecondEvent())) {
 				// Lock followed by Lock (Error Case)
 				if (!VerificationProperties.isFeasibilityCheckingEnabled() || this.checkPathFeasibility(summaries)) {
 					// Path is (Feasible) >> An actual (Error Case)
-					this.setResult(VerificationResult.DEADLOCKED);
+					this.setResult(VerificationResult.DEADLOCK);
 				} else {
-					this.setResult(VerificationResult.SAFE);
+					this.setResult(VerificationResult.PAIRED);
 				}
 			} else {
 				// Lock followed by Unlock (Safe Case)
-				this.setResult(VerificationResult.SAFE);
+				this.setResult(VerificationResult.PAIRED);
 			}
 		}
 	}
