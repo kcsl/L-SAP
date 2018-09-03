@@ -2,7 +2,6 @@ package com.kcsl.lsap.verifier;
 
 import static com.ensoftcorp.atlas.core.script.Common.universe;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
