@@ -3,6 +3,7 @@ package com.kcsl.lsap.verifier;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.Set;
 
 import com.ensoftcorp.atlas.core.db.graph.Edge;
 import com.ensoftcorp.atlas.core.db.graph.Graph;
@@ -31,7 +32,7 @@ public class FunctionSummary {
 	
 	private AtlasMap<Node, FunctionSummary> successorsFunctionSummaryMap;
 	
-	private AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap;
+	private AtlasMap<Node, Set<MatchingPair>> lockNodeToMatchingPairsMap;
 	
 	private Summary entryNodeReachableSummary;
 	
@@ -98,36 +99,12 @@ public class FunctionSummary {
 		this.exitNodeReachableSummary = exitNodeReachableSummary;
 	}
 	
-//	private void computeExitNodeReachableSummary(Graph graph, Node entryNode, Node exitNode) {
-//		Queue<Node> queue = new LinkedList<Node>();
-//		queue.add(exitNode);
-//		while(!queue.isEmpty()) {
-//			Node currentNode = queue.poll();
-//			if(this.lockEventNodes.contains(currentNode)) {
-//				this.exitNodeReachableSummary.add(Event.LOCK, currentNode);
-//			} else if (this.unlockEventNodes.contains(currentNode)) {
-//				this.exitNodeReachableSummary.add(Event.UNLOCK, currentNode);
-//			} else if (this.successorsFunctionSummaryMap.containsKey(currentNode)) {
-//				Summary successorReachableSummaryFromExitNode = this.successorsFunctionSummaryMap.get(currentNode).getExitNodeReachableSummary();
-//				this.exitNodeReachableSummary.update(successorReachableSummaryFromExitNode);
-//			} else if (currentNode.equals(entryNode)) {
-//				this.exitNodeReachableSummary.addAll(Event.NONE, new AtlasHashSet<Node>());
-//			} else {
-//				AtlasSet<Edge> inEdges = graph.edges(currentNode, NodeDirection.IN);
-//				for(Edge edge: inEdges) {
-//					Node fromNode = edge.from();
-//					queue.add(fromNode);
-//				}
-//			}
-//		}
-//	}
-	
-	public void storeMatchingPairs(AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap) {
-		this.matchingPairsMap = matchingPairsMap;
+	public void storeMatchingPairs(AtlasMap<Node, Set<MatchingPair>> lockNodeToMatchingPairsMap) {
+		this.lockNodeToMatchingPairsMap = lockNodeToMatchingPairsMap;
 	}
 	
-	public AtlasMap<Node, ArrayList<MatchingPair>> getMatchingPairsMap() {
-		return this.matchingPairsMap;
+	public AtlasMap<Node, Set<MatchingPair>> getMatchingPairsMap() {
+		return this.lockNodeToMatchingPairsMap;
 	}
 	
 	public AtlasSet<Node> getLockEventNodes() {

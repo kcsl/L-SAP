@@ -318,7 +318,7 @@ public class Verifier {
 		
 		if(!actualRacedEvents.isEmpty()){
 			LSAPUtils.log("##########################################");
-			LSAPUtils.log("Deadloced Lock Events");
+			LSAPUtils.log("DeadLocked Lock Events");
 			LSAPUtils.log("##########################################");
 			this.logMatchingResultsForEvents(doubleE1Events, VerificationResult.DEADLOCK);
 			LSAPUtils.log("------------------------------------------");

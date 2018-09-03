@@ -4,8 +4,10 @@ import static com.ensoftcorp.atlas.core.script.Common.universe;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.ensoftcorp.atlas.core.db.graph.Node;
 import com.ensoftcorp.atlas.core.db.map.AtlasGraphKeyHashMap;
@@ -61,7 +63,7 @@ public class FunctionVerifier {
 	/**
 	 * A mapping between {@link Node} to its list of {@link MatchingPair}s.
 	 */
-    private AtlasMap<Node, ArrayList<MatchingPair>> matchingPairsMap;
+    private AtlasMap<Node, Set<MatchingPair>> lockNodeToMatchingPairsMap;
 	
 	/**
 	 * A list of {@link Q}s containing the events of interest. the first element contains the events calling lock, the second element contains the events calls unlock, 
@@ -84,7 +86,7 @@ public class FunctionVerifier {
 		this.currentFunction = function;
 		this.successorsFunctionSummaries = successorsFunctionSummaries;
 		this.pcg = pcg;
-		this.matchingPairsMap = new AtlasGraphKeyHashMap<Node, ArrayList<MatchingPair>>();
+		this.lockNodeToMatchingPairsMap = new AtlasGraphKeyHashMap<Node, Set<MatchingPair>>();
 		this.eventsOfInterest = events;
 		this.setupPreNodeEventSetCache();
 	}
@@ -136,7 +138,7 @@ public class FunctionVerifier {
 		this.summary = new FunctionSummary(this.currentFunction, this.pcg, this.lockEventNodes, this.multiStateLockEventNodes, this.unlockEventNodes, this.successorsFunctionSummaries);
 		this.summary.computeEntryNodeReachableSummary();
 		this.summary.setExitNodeReachableSummary(this.preNodeSummaryCache.get(this.pcg.getMasterExit()));
-		this.summary.storeMatchingPairs(this.matchingPairsMap);
+		this.summary.storeMatchingPairs(this.lockNodeToMatchingPairsMap);
 
 		return this.summary;
 	}
@@ -218,14 +220,14 @@ public class FunctionVerifier {
 	
 	private void reportDeadlock(AtlasSet<Node> lockNodes, AtlasSet<Node> matchingLockNodes) {
 		for (Node lockNode : lockNodes) {
-			ArrayList<MatchingPair> matchingPairs = new ArrayList<MatchingPair>();
-			if (this.matchingPairsMap.containsKey(lockNode)) {
-				matchingPairs = this.matchingPairsMap.get(lockNode);
+			Set<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
+			if (this.lockNodeToMatchingPairsMap.containsKey(lockNode)) {
+				matchingPairs = this.lockNodeToMatchingPairsMap.get(lockNode);
 			}
 			for (Node matchingLockNode : matchingLockNodes) {
 				matchingPairs.add(new MatchingPair(lockNode, matchingLockNode, null));
 			}
-			this.matchingPairsMap.put(lockNode, matchingPairs);
+			this.lockNodeToMatchingPairsMap.put(lockNode, matchingPairs);
 		}
 	}
 	
@@ -237,14 +239,14 @@ public class FunctionVerifier {
 	
 	private void reportPairing(AtlasSet<Node> lockNodes, AtlasSet<Node> matchingUnlockNodes) {
 		for (Node lockNode : lockNodes) {
-			ArrayList<MatchingPair> matchingPairs = new ArrayList<MatchingPair>();
-			if (this.matchingPairsMap.containsKey(lockNode)) {
-				matchingPairs = this.matchingPairsMap.get(lockNode);
+			Set<MatchingPair> matchingPairs = new HashSet<MatchingPair>();
+			if (this.lockNodeToMatchingPairsMap.containsKey(lockNode)) {
+				matchingPairs = this.lockNodeToMatchingPairsMap.get(lockNode);
 			}
 			for (Node matchingUnlockNode : matchingUnlockNodes) {
 				matchingPairs.add(new MatchingPair(lockNode, matchingUnlockNode, null));
 			}
-			this.matchingPairsMap.put(lockNode, matchingPairs);
+			this.lockNodeToMatchingPairsMap.put(lockNode, matchingPairs);
 		}
 	}
 	
