@@ -12,7 +12,7 @@ import com.ensoftcorp.atlas.core.script.Common;
 import com.ensoftcorp.atlas.core.xcsg.XCSG;
 import com.ensoftcorp.atlas.ui.viewer.graph.DisplayUtil;
 import com.ensoftcorp.open.commons.analysis.CallSiteAnalysis;
-import com.ensoftcorp.open.commons.utilities.DisplayUtils;
+import com.ensoftcorp.open.commons.ui.utilities.DisplayUtils;
 import com.kcsl.lsap.utils.LSAPUtils;
 import com.kcsl.lsap.utils.SignatureVerificationUtils;
 
